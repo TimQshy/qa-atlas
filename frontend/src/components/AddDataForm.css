@@ -1,0 +1,84 @@
+.add-data-form {
+  padding: 1rem 0;
+}
+
+.add-data-form h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.add-data-form-error {
+  margin: 0 0 0.75rem 0;
+  padding: 0.5rem;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.85rem;
+  border-radius: 4px;
+}
+
+.add-data-form label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+.add-data-form label + label {
+  margin-top: 0.5rem;
+}
+
+.add-data-form input,
+.add-data-form select,
+.add-data-form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.add-data-form textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.add-data-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.btn-add {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background: #2563eb;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-add:hover {
+  background: #1d4ed8;
+}
+
+.btn-cancel {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-cancel:hover {
+  background: #e2e8f0;
+}

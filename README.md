@@ -1,22 +1,36 @@
 # QA Atlas
 
-Interactive AI-driven product map: visualize product structure and QA coverage, linked to test cases, Jira tickets, and bugs. Updates when an AI agent calls the backend API.
+Interactive QA test repository: folder tree with test cases, release-based highlighting, and description panel. Updates when an AI agent (Cursor skill) calls the backend API.
 
-## Docs
+## Quick start
 
-- **ROADMAP.md** — Architecture, data model, phases, and file structure.
-- **VIBECODING_PROMPTS.md** — Copy-paste prompts for building each step with Cursor (vibecoding).
+**Одной командой (рекомендуется):**
+```bash
+npm install && npm start
+```
+Запускает backend (4000) и frontend (5173) одновременно.
 
-## Quick start (after building)
+**Или по отдельности:**
+1. **Backend:** `cd backend && npm start` (port 4000).
+2. **Frontend:** `cd frontend && npm start` (port 5173).
+3. Open http://localhost:5173 in your browser.
 
-1. **Backend:** `cd backend && npm install && npm start` (port 4000).
-2. **Frontend:** `cd frontend && npm install && npm run dev`.
-3. Open the app; use the prompts in order to build from Step 1.
+**Seed data:** Folders and releases load from `backend/data/folders.json` and `backend/data/releases.json` on startup. Data is sourced from Enquiry Tracker (eq-monorepo) regression test plan — see [docs/DATA_SOURCE.md](docs/DATA_SOURCE.md).
+
+## Features
+
+- **Folder tree** — Collapsible folders (Basic, Event, Enquiries, etc.) with nested items.
+- **Description panel** — Click a folder or item to see details, tags, tickets, bugs.
+- **Release highlighting** — Select a release to mark affected folders and items in red.
+- **Cursor skill** — API for creating/updating releases; see [docs/CURSOR_SKILL_RELEASES.md](docs/CURSOR_SKILL_RELEASES.md).
 
 ## Stack
 
-- **Frontend:** React, Vite, react-d3-tree.
+- **Frontend:** React, Vite.
 - **Backend:** Node.js, Express, JSON file storage.
-- **AI:** REST API (optional MCP server for Cursor).
+- **AI:** REST API for releases (Cursor skill integration).
 
-Build step-by-step using **VIBECODING_PROMPTS.md**.
+## Docs
+
+- **ROADMAP.md** — Architecture, data model, phases.
+- **docs/CURSOR_SKILL_RELEASES.md** — How to add/update releases from a Cursor skill.

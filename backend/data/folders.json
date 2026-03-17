@@ -1,0 +1,814 @@
+{
+  "folders": [
+    {
+      "id": "folder-apply",
+      "name": "Apply",
+      "parentId": null,
+      "tags": [
+        "APPLY",
+        "P1"
+      ]
+    },
+    {
+      "id": "folder-students",
+      "name": "Students",
+      "parentId": null,
+      "tags": [
+        "STUDENTS",
+        "P1"
+      ]
+    },
+    {
+      "id": "folder-auth",
+      "name": "Auth",
+      "parentId": null,
+      "tags": [
+        "AUTH",
+        "P1"
+      ]
+    },
+    {
+      "id": "folder-map",
+      "name": "Map Layers",
+      "parentId": null,
+      "tags": [
+        "MAP",
+        "P1"
+      ]
+    },
+    {
+      "id": "folder-portal",
+      "name": "Contact Portal",
+      "parentId": null,
+      "tags": [
+        "PORTAL",
+        "P1"
+      ]
+    },
+    {
+      "id": "folder-family",
+      "name": "Family Fields",
+      "parentId": null,
+      "tags": [
+        "FAMILY",
+        "P2"
+      ]
+    },
+    {
+      "id": "folder-classgroups",
+      "name": "Class Groups",
+      "parentId": null,
+      "tags": [
+        "CLASSGROUPS",
+        "P2"
+      ]
+    },
+    {
+      "id": "folder-analytics",
+      "name": "Analytics",
+      "parentId": null,
+      "tags": [
+        "ANALYTICS",
+        "P2"
+      ]
+    },
+    {
+      "id": "folder-leadscore",
+      "name": "Lead Score",
+      "parentId": null,
+      "tags": [
+        "LEADSCORE",
+        "P2"
+      ]
+    },
+    {
+      "id": "folder-tasks",
+      "name": "Tasks",
+      "parentId": null,
+      "tags": [
+        "TASKS",
+        "P2"
+      ]
+    },
+    {
+      "id": "folder-impexp",
+      "name": "Export/Import",
+      "parentId": null,
+      "tags": [
+        "IMPEXP",
+        "P3"
+      ]
+    },
+    {
+      "id": "folder-merge",
+      "name": "Merge",
+      "parentId": null,
+      "tags": [
+        "MERGE",
+        "P3"
+      ]
+    },
+    {
+      "id": "folder-admin",
+      "name": "Admin",
+      "parentId": null,
+      "tags": [
+        "ADMIN",
+        "P3"
+      ]
+    },
+    {
+      "id": "folder-enquiries",
+      "name": "Enquiries",
+      "parentId": null,
+      "tags": [
+        "ENQUIRIES"
+      ]
+    },
+    {
+      "id": "folder-events",
+      "name": "Events",
+      "parentId": null,
+      "tags": [
+        "EVENTS"
+      ]
+    },
+    {
+      "id": "folder-comms",
+      "name": "Comms",
+      "parentId": null,
+      "tags": [
+        "COMMS"
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "item-p1-apply-01",
+      "name": "P1-APPLY-01 Submit application end-to-end",
+      "folderId": "folder-apply",
+      "description": "1. Open public apply form URL for test school. 2. Fill Student First Name, Last Name, DOB, Year Level, Campus. 3. Upload test PDF (<5MB). 4. Click Submit. 5. Verify confirmation page. 6. Log in as admin > Applications list. Expected: Application created, confirmation email sent, visible in admin.",
+      "status": "To Do",
+      "tags": [
+        "APPLY",
+        "SMOKE"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9039"
+        }
+      ],
+      "bugs": [],
+      "comments": [
+        {
+          "id": "9ef50602-a84c-4c52-96b9-4772d7340ac4",
+          "text": "testing",
+          "createdAt": "2026-03-17T05:28:35.933Z"
+        }
+      ]
+    },
+    {
+      "id": "item-p1-apply-02",
+      "name": "P1-APPLY-02 Hidden fields not in notifications",
+      "folderId": "folder-apply",
+      "description": "Configure signup form with hidden fields set to No. Submit as parent. Check notification email. Expected: Hidden fields do NOT appear in email (ET-9039 fix).",
+      "status": "To Do",
+      "tags": [
+        "APPLY"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9039"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-apply-03",
+      "name": "P1-APPLY-03 Stage filter present",
+      "folderId": "folder-apply",
+      "description": "Navigate to Applications list > Filters. Look for Stage filter. Expected: Stage filter present and functional (ET-9188).",
+      "status": "To Do",
+      "tags": [
+        "APPLY"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9188"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-stu-01",
+      "name": "P1-STU-01 Add student (boarding disabled)",
+      "folderId": "folder-students",
+      "description": "Select school with boarding disabled. Click Add Student. Fill First Name, Last Name, Year Level. Save. Expected: Student created without error (ET-9110).",
+      "status": "Done",
+      "tags": [
+        "STUDENTS",
+        "SMOKE"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9110"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-stu-02",
+      "name": "P1-STU-02 Save student address",
+      "folderId": "folder-students",
+      "description": "Open student details > Student Residence. Enter street, city, state, postcode. Save. Expected: Address saved and displayed correctly (ET-9183).",
+      "status": "To Do",
+      "tags": [
+        "STUDENTS"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9183"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-stu-03",
+      "name": "P1-STU-03 Zone Catcher status on student",
+      "folderId": "folder-students",
+      "description": "Add student with address inside zone boundary. Wait for geocoding. Open student details. Expected: Zone Catcher shows In Zone status.",
+      "status": "To Do",
+      "tags": [
+        "STUDENTS",
+        "MAP"
+      ],
+      "parentId": null,
+      "tickets": [],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-auth-01",
+      "name": "P1-AUTH-01 WorkOS SSO login (AU)",
+      "folderId": "folder-auth",
+      "description": "Navigate to app.enquirytracker.net. Click SSO login. Complete SAML flow. Expected: Logged in, no page refresh loop.",
+      "status": "To Do",
+      "tags": [
+        "AUTH",
+        "SMOKE"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9087"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-auth-02",
+      "name": "P1-AUTH-02 Regular email/password login",
+      "folderId": "folder-auth",
+      "description": "Navigate to login page. Enter email and password. Click Login. Expected: Logged in via non-SSO path.",
+      "status": "To Do",
+      "tags": [
+        "AUTH"
+      ],
+      "parentId": null,
+      "tickets": [],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-map-01",
+      "name": "P1-MAP-01 Upload KML file",
+      "folderId": "folder-map",
+      "description": "Settings > Map Layers > Upload. Select valid KML with polygon. Assign to campus. Expected: File uploaded, polygon stored, layer displayed.",
+      "status": "To Do",
+      "tags": [
+        "MAP"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9043"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-map-02",
+      "name": "P1-MAP-02 Zone Catcher In Zone",
+      "folderId": "folder-map",
+      "description": "Upload zone boundary. Add student with address inside zone. Wait for computation. Expected: Student details show In Zone badge.",
+      "status": "To Do",
+      "tags": [
+        "MAP",
+        "ZONECATCHER"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9067"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-map-03",
+      "name": "P1-MAP-03 Student list filter by Zone Catcher",
+      "folderId": "folder-map",
+      "description": "Students list > Filters > Zone Catcher > In Zone. Expected: Only students with In Zone status shown (ET-9069).",
+      "status": "To Do",
+      "tags": [
+        "MAP"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9069"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p1-portal-01",
+      "name": "P1-PORTAL-01 Signature capture on apply form",
+      "folderId": "folder-portal",
+      "description": "Open apply form with signature field. Draw signature. Submit. Expected: Signature captured and saved (ET-6070).",
+      "status": "To Do",
+      "tags": [
+        "PORTAL",
+        "APPLY"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-6070"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p2-fam-01",
+      "name": "P2-FAM-01 Family Type in Student Details",
+      "folderId": "folder-family",
+      "description": "Open student details. Find Family Type dropdown. Select value. Save. Expected: Value saved and displayed (ET-3708).",
+      "status": "To Do",
+      "tags": [
+        "FAMILY",
+        "STUDENTS"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-3708"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p2-fam-02",
+      "name": "P2-FAM-02 Family Type filter",
+      "folderId": "folder-family",
+      "description": "Students list > Filters > Family Type. Expected: Results filtered correctly (ET-3707).",
+      "status": "To Do",
+      "tags": [
+        "FAMILY"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-3707"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p2-cg-01",
+      "name": "P2-CG-01 Class Groups on signup forms",
+      "folderId": "folder-classgroups",
+      "description": "Open signup form with Class Groups enabled. Expected: Class Groups dropdown visible (ET-9103).",
+      "status": "To Do",
+      "tags": [
+        "CLASSGROUPS"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9103"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p2-ana-01",
+      "name": "P2-ANA-01 Geographic map with addresses",
+      "folderId": "folder-analytics",
+      "description": "Analytics > Geographic. Expected: Student addresses plotted on map (ET-9142).",
+      "status": "To Do",
+      "tags": [
+        "ANALYTICS"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9142"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p2-ls-01",
+      "name": "P2-LS-01 Zone Catcher in Lead Score",
+      "folderId": "folder-leadscore",
+      "description": "Admin > Lead Score. Add Zone Catcher criterium. Set points for In/Out Zone. Check student scores. Expected: Scoring applied correctly (ET-9150).",
+      "status": "To Do",
+      "tags": [
+        "LEADSCORE",
+        "MAP"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9150"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p2-task-01",
+      "name": "P2-TASK-01 Create task",
+      "folderId": "folder-tasks",
+      "description": "Tasks page > Create Task. Fill title and details. Save. Expected: Task created and visible in list.",
+      "status": "To Do",
+      "tags": [
+        "TASKS"
+      ],
+      "parentId": null,
+      "tickets": [],
+      "bugs": []
+    },
+    {
+      "id": "item-p3-csv-01",
+      "name": "P3-CSV-01 Export Family Type",
+      "folderId": "folder-impexp",
+      "description": "Students > Export CSV. Expected: Family Type column present in export.",
+      "status": "To Do",
+      "tags": [
+        "IMPEXP",
+        "FAMILY"
+      ],
+      "parentId": null,
+      "tickets": [],
+      "bugs": []
+    },
+    {
+      "id": "item-p3-merge-01",
+      "name": "P3-MERGE-01 Merge with Family Type",
+      "folderId": "folder-merge",
+      "description": "Select two students with different Family Types. Open merge. Choose preferred value. Merge. Expected: Correct value preserved (ET-4209).",
+      "status": "To Do",
+      "tags": [
+        "MERGE"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-4209"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-p3-infra-01",
+      "name": "P3-INFRA-01 Version number display",
+      "folderId": "folder-admin",
+      "description": "Login. Check version in footer or settings. Expected: Shows v26.1.0 format (ET-8898).",
+      "status": "To Do",
+      "tags": [
+        "ADMIN"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-8898"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-enq-01",
+      "name": "Enquiry creation and filters",
+      "folderId": "folder-enquiries",
+      "description": "Create enquiry. Apply filters by status. Expected: Enquiry saved, filters work.",
+      "status": "To Do",
+      "tags": [
+        "ENQUIRIES"
+      ],
+      "parentId": null,
+      "tickets": [],
+      "bugs": []
+    },
+    {
+      "id": "item-event-01",
+      "name": "Event form submit",
+      "folderId": "folder-events",
+      "description": "Open event registration form. Fill and submit. Expected: Registration saved.",
+      "status": "To Do",
+      "tags": [
+        "EVENTS"
+      ],
+      "parentId": null,
+      "tickets": [],
+      "bugs": []
+    },
+    {
+      "id": "item-comms-01",
+      "name": "Send notification email",
+      "folderId": "folder-comms",
+      "description": "Communications > Send message. Expected: Email sent, Dittofeed iframe loads.",
+      "status": "To Do",
+      "tags": [
+        "COMMS"
+      ],
+      "parentId": null,
+      "tickets": [],
+      "bugs": []
+    },
+    {
+      "id": "item-et-9395",
+      "name": "ET-9395 TasksReminders error on every page",
+      "folderId": "folder-tasks",
+      "description": "When TasksReminders feature flag disabled, 'This action is not allowed for this role' error appears on every page. Expected: No error when flag disabled.",
+      "status": "To Do",
+      "tags": [
+        "TASKS",
+        "QA"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9395"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-9392",
+      "name": "ET-9392 Subtours order on event webform",
+      "folderId": "folder-events",
+      "description": "Subtours/Interview Times not in correct order on event webform. St Joseph's Mundingburra. Expected: Chronological order by start time.",
+      "status": "To Do",
+      "tags": [
+        "EVENTS",
+        "QA",
+        "regression"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9392"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-9379",
+      "name": "ET-9379 Sanity check: single test crash blocks all",
+      "folderId": "folder-admin",
+      "description": "When sanity check test throws exception, all subsequent tests skipped. Fix: wrap in try/except, continue.",
+      "status": "To Do",
+      "tags": [
+        "ADMIN",
+        "QA"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9379"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-9368",
+      "name": "ET-9368 Student Interests Include in List",
+      "folderId": "folder-admin",
+      "description": "Admin > School Lists > Student Interests does not honor Include in List on Apply forms. Brisbane South State Secondary.",
+      "status": "Done",
+      "tags": [
+        "ADMIN",
+        "regression"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9368"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-9351",
+      "name": "ET-9351 geocode-contact worker lock timeout",
+      "folderId": "folder-map",
+      "description": "geocode-contact BullMQ worker fails with Lock wait timeout. Fix: reduce concurrency 10→3.",
+      "status": "To Do",
+      "tags": [
+        "MAP",
+        "QA"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9351"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-9329",
+      "name": "ET-9329 geocode-student deadlocks",
+      "folderId": "folder-map",
+      "description": "geocode-student worker: deadlocks, transaction commit failures. ~24 errors/10min on dev.",
+      "status": "To Do",
+      "tags": [
+        "MAP",
+        "QA"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9329"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-9257",
+      "name": "ET-9257 reCAPTCHA already rendered",
+      "folderId": "folder-apply",
+      "description": "Error: reCAPTCHA has already been rendered in this element. Sentry ENROLLMENT_ANGULAR-1TW.",
+      "status": "To Do",
+      "tags": [
+        "APPLY",
+        "QA"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9257"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-9033",
+      "name": "ET-9033 Delete documents in In Progress apps",
+      "folderId": "folder-apply",
+      "description": "School user can delete documents when previewing In Progress apps. Expected: Delete button hidden for in-progress.",
+      "status": "Done",
+      "tags": [
+        "APPLY",
+        "regression"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9033"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-8933",
+      "name": "ET-8933 reprovisionSchool Dittofeed error",
+      "folderId": "folder-comms",
+      "description": "reprovisionSchool job fails with UserPropertyAlreadyExists from Dittofeed. 11.6% schools affected.",
+      "status": "To Do",
+      "tags": [
+        "COMMS",
+        "QA"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-8933"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-8761",
+      "name": "ET-8761 [e2e] Submit Apply form",
+      "folderId": "folder-apply",
+      "description": "E2E test for Submit Apply form form. Full flow automation.",
+      "status": "Done",
+      "tags": [
+        "APPLY",
+        "E2E"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-8761"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-8578",
+      "name": "ET-8578 [e2e] Student and Contact list P1",
+      "folderId": "folder-students",
+      "description": "E2E: Advanced filtering, Search, Bulk operations.",
+      "status": "To Do",
+      "tags": [
+        "STUDENTS",
+        "E2E"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-8578"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-8577",
+      "name": "ET-8577 [e2e] CRUD campus P0",
+      "folderId": "folder-admin",
+      "description": "E2E: CREATE, UPDATE, DELETE Campus tests.",
+      "status": "Done",
+      "tags": [
+        "ADMIN",
+        "E2E"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-8577"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-8576",
+      "name": "ET-8576 [e2e] CRUD school P0",
+      "folderId": "folder-admin",
+      "description": "E2E: CREATE, UPDATE, DELETE School. Enable applications module.",
+      "status": "Done",
+      "tags": [
+        "ADMIN",
+        "E2E"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-8576"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-8580",
+      "name": "ET-8580 [e2e] Admin - Messages P1",
+      "folderId": "folder-comms",
+      "description": "E2E: Email template CRUD for all sections.",
+      "status": "To Do",
+      "tags": [
+        "COMMS",
+        "E2E"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-8580"
+        }
+      ],
+      "bugs": []
+    },
+    {
+      "id": "item-et-9201",
+      "name": "ET-9201 Regression testing v26.1.0",
+      "folderId": "folder-admin",
+      "description": "Prepare regression test plan: 104 test cases, P1/P2/P3. Analysis + Confluence page.",
+      "status": "Done",
+      "tags": [
+        "ADMIN",
+        "regression"
+      ],
+      "parentId": null,
+      "tickets": [
+        {
+          "key": "ET-9201"
+        }
+      ],
+      "bugs": []
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+.feature-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.feature-panel--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #6b7280;
+  gap: 0.5rem;
+}
+
+.feature-panel-hint {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.feature-panel-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.feature-panel-module {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.feature-panel-section {
+  margin-bottom: 1rem;
+}
+
+.feature-panel-section h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.feature-panel-section ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.feature-panel-section li {
+  margin-bottom: 0.25rem;
+}
+
+.feature-panel-coverage {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.coverage-high {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.coverage-medium {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.coverage-low {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.feature-panel-empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.badge {
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 10px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.badge-auto {
+  background: #dbeafe;
+  color: #1e40af;
+}

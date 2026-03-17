@@ -1,0 +1,36 @@
+{
+  "releases": [
+    {
+      "id": "rel-v261",
+      "name": "v26.1.0 - Regression",
+      "date": "2026-02-11",
+      "affectedFolderIds": ["folder-apply", "folder-students", "folder-auth"],
+      "affectedItemIds": ["item-p1-apply-01", "item-p1-stu-01", "item-p1-auth-01"],
+      "tags": ["P1", "APPLY", "STUDENTS", "AUTH"]
+    },
+    {
+      "id": "rel-map",
+      "name": "v26.1.0 - Map & Zone Catcher",
+      "date": "2026-02-11",
+      "affectedFolderIds": ["folder-map", "folder-students"],
+      "affectedItemIds": ["item-p1-map-01", "item-p1-map-02", "item-p1-stu-03"],
+      "tags": ["MAP", "ZONECATCHER"]
+    },
+    {
+      "id": "rel-family",
+      "name": "v26.1.0 - Family Fields",
+      "date": "2026-02-11",
+      "affectedFolderIds": ["folder-family", "folder-merge", "folder-impexp"],
+      "affectedItemIds": ["item-p2-fam-01", "item-p2-fam-02", "item-p3-merge-01"],
+      "tags": ["FAMILY", "P2"]
+    },
+    {
+      "id": "rel-qa",
+      "name": "QA in progress (Jira)",
+      "date": "2026-03-17",
+      "affectedFolderIds": ["folder-tasks", "folder-events", "folder-map", "folder-comms"],
+      "affectedItemIds": ["item-et-9395", "item-et-9392", "item-et-9379", "item-et-9351", "item-et-9329", "item-et-8933"],
+      "tags": ["QA"]
+    }
+  ]
+}
