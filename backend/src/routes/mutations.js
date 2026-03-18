@@ -5,7 +5,11 @@ import {
   ensureFeature,
   resolveModule,
   findFeatureByModuleAndName,
-  save
+  updateFeatureTestCases,
+  updateFeatureTickets,
+  updateFeatureBugs,
+  updateFeatureAutomation,
+  updateFeatureCoverage
 } from '../store/graph.js';
 
 const router = Router();
@@ -20,7 +24,6 @@ router.post('/module', (req, res) => {
     return res.status(400).json({ error: 'name is required' });
   }
   const module = ensureModule(name.trim());
-  save();
   res.json({ module });
 });
 
@@ -34,7 +37,6 @@ router.post('/feature', (req, res) => {
     return res.status(400).json({ error: 'module not found' });
   }
   const feature = ensureFeature(mod.id, name.trim());
-  save();
   res.json({ feature });
 });
 
@@ -52,14 +54,13 @@ router.post('/testcase', (req, res) => {
     name: testCase.trim(),
     automated: !!automated
   };
-  feature.testCases = feature.testCases ?? [];
-  feature.testCases.push(tc);
-  if (tc.automated) {
-    feature.automation = feature.automation ?? [];
-    feature.automation.push(tc.name);
-  }
-  save();
-  res.json({ feature });
+  const testCases = feature.testCases ?? [];
+  testCases.push(tc);
+  let automation = feature.automation ?? [];
+  if (tc.automated) automation.push(tc.name);
+  updateFeatureTestCases(feature.id, testCases);
+  updateFeatureAutomation(feature.id, automation);
+  res.json({ feature: { ...feature, testCases, automation } });
 });
 
 router.post('/ticket', (req, res) => {
@@ -71,10 +72,10 @@ router.post('/ticket', (req, res) => {
   if (!feature) {
     return res.status(400).json({ error: 'feature not found' });
   }
-  feature.tickets = feature.tickets ?? [];
-  feature.tickets.push({ key: ticket.trim() });
-  save();
-  res.json({ feature });
+  const tickets = feature.tickets ?? [];
+  tickets.push({ key: ticket.trim() });
+  updateFeatureTickets(feature.id, tickets);
+  res.json({ feature: { ...feature, tickets } });
 });
 
 router.post('/bug', (req, res) => {
@@ -86,10 +87,10 @@ router.post('/bug', (req, res) => {
   if (!feature) {
     return res.status(400).json({ error: 'feature not found' });
   }
-  feature.bugs = feature.bugs ?? [];
-  feature.bugs.push(bug.trim());
-  save();
-  res.json({ feature });
+  const bugs = feature.bugs ?? [];
+  bugs.push(bug.trim());
+  updateFeatureBugs(feature.id, bugs);
+  res.json({ feature: { ...feature, bugs } });
 });
 
 router.post('/coverage', (req, res) => {
@@ -105,9 +106,9 @@ router.post('/coverage', (req, res) => {
   if (!feature) {
     return res.status(400).json({ error: 'feature not found' });
   }
-  feature.coverage = clamp(num, 0, 100);
-  save();
-  res.json({ feature });
+  const value = clamp(num, 0, 100);
+  updateFeatureCoverage(feature.id, value);
+  res.json({ feature: { ...feature, coverage: value } });
 });
 
 export default router;

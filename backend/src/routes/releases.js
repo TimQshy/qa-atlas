@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getReleases, getRelease, createRelease, updateRelease, save } from '../store/releases.js';
+import { getReleases, getRelease, createRelease, updateRelease } from '../store/releases.js';
 
 const router = Router();
 
@@ -16,26 +16,27 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, date, affectedFolderIds, affectedItemIds, tags } = req.body ?? {};
+  const { name, date, parentId, affectedFolderIds, affectedItemIds, tags } = req.body ?? {};
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
   const release = createRelease({
     name: name.trim(),
     date: date || new Date().toISOString().slice(0, 10),
+    parentId: parentId || null,
     affectedFolderIds: affectedFolderIds ?? [],
     affectedItemIds: affectedItemIds ?? [],
     tags: tags ?? []
   });
-  save();
   res.json(release);
 });
 
 router.put('/:id', (req, res) => {
-  const { name, date, affectedFolderIds, affectedItemIds, tags } = req.body ?? {};
+  const { name, date, parentId, affectedFolderIds, affectedItemIds, tags } = req.body ?? {};
   const release = updateRelease(req.params.id, {
     name,
     date,
+    parentId,
     affectedFolderIds,
     affectedItemIds,
     tags
@@ -43,7 +44,6 @@ router.put('/:id', (req, res) => {
   if (!release) {
     return res.status(404).json({ error: 'release not found' });
   }
-  save();
   res.json(release);
 });
 

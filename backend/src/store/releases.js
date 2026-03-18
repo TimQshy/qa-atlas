@@ -1,77 +1,89 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { getDb } from '../db/database.js';
 import { v4 as uuid } from 'uuid';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '../../data');
-const DATA_FILE = path.join(DATA_DIR, 'releases.json');
-
-let state = {
-  releases: []
-};
-
-function getDefaultState() {
-  return { releases: [] };
+function rowToRelease(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    date: row.date,
+    parentId: row.parent_id,
+    affectedFolderIds: JSON.parse(row.affected_folder_ids || '[]'),
+    affectedItemIds: JSON.parse(row.affected_item_ids || '[]'),
+    tags: JSON.parse(row.tags || '[]')
+  };
 }
 
 export function load() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (fs.existsSync(DATA_FILE)) {
-      const data = fs.readFileSync(DATA_FILE, 'utf-8');
-      state = JSON.parse(data);
-    } else {
-      state = getDefaultState();
-      save();
-    }
-  } catch (err) {
-    console.error('Error loading releases:', err);
-    state = getDefaultState();
-  }
+  // No-op: SQLite loads on init
 }
 
 export function save() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving releases:', err);
-  }
+  // No-op: SQLite persists on each write
 }
 
 export function getReleases() {
-  return [...state.releases];
+  const db = getDb();
+  return db.prepare('SELECT * FROM releases').all().map(rowToRelease);
 }
 
 export function getRelease(id) {
-  return state.releases.find((r) => r.id === id) ?? null;
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM releases WHERE id = ?').get(id);
+  return row ? rowToRelease(row) : null;
 }
 
-export function createRelease({ name, date, affectedFolderIds = [], affectedItemIds = [], tags = [] }) {
-  const release = {
-    id: uuid(),
-    name: (name ?? '').trim(),
-    date: date || new Date().toISOString().slice(0, 10),
-    affectedFolderIds: Array.isArray(affectedFolderIds) ? affectedFolderIds : [],
-    affectedItemIds: Array.isArray(affectedItemIds) ? affectedItemIds : [],
-    tags: Array.isArray(tags) ? tags : []
-  };
-  state.releases.push(release);
-  return release;
+export function getChildReleases(parentId = null) {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM releases WHERE (parent_id IS NULL AND ? IS NULL) OR parent_id = ?').all(parentId, parentId);
+  return rows.map(rowToRelease);
+}
+
+export function getDescendantReleaseIds(rootId) {
+  if (!rootId) return [];
+  const out = [];
+  const queue = [rootId];
+  const seen = new Set();
+  while (queue.length) {
+    const current = queue.shift();
+    if (seen.has(current)) continue;
+    seen.add(current);
+    out.push(current);
+    for (const child of getChildReleases(current)) {
+      queue.push(child.id);
+    }
+  }
+  return out;
+}
+
+export function createRelease({ name, date, parentId = null, affectedFolderIds = [], affectedItemIds = [], tags = [] }) {
+  const db = getDb();
+  const id = uuid();
+  db.prepare(
+    'INSERT INTO releases (id, name, date, parent_id, affected_folder_ids, affected_item_ids, tags) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(
+    id,
+    (name ?? '').trim(),
+    date || new Date().toISOString().slice(0, 10),
+    parentId || null,
+    JSON.stringify(Array.isArray(affectedFolderIds) ? affectedFolderIds : []),
+    JSON.stringify(Array.isArray(affectedItemIds) ? affectedItemIds : []),
+    JSON.stringify(Array.isArray(tags) ? tags : [])
+  );
+  return getRelease(id);
 }
 
 export function updateRelease(id, patch) {
   const release = getRelease(id);
   if (!release) return null;
-  if (patch.name !== undefined) release.name = String(patch.name).trim();
-  if (patch.date !== undefined) release.date = patch.date;
-  if (patch.affectedFolderIds !== undefined) release.affectedFolderIds = Array.isArray(patch.affectedFolderIds) ? patch.affectedFolderIds : release.affectedFolderIds;
-  if (patch.affectedItemIds !== undefined) release.affectedItemIds = Array.isArray(patch.affectedItemIds) ? patch.affectedItemIds : release.affectedItemIds;
-  if (patch.tags !== undefined) release.tags = Array.isArray(patch.tags) ? patch.tags : release.tags;
-  return release;
+  const db = getDb();
+  const name = patch.name !== undefined ? String(patch.name).trim() : release.name;
+  const date = patch.date !== undefined ? patch.date : release.date;
+  const parentId = patch.parentId !== undefined ? (patch.parentId || null) : release.parentId;
+  const affectedFolderIds = patch.affectedFolderIds !== undefined ? (Array.isArray(patch.affectedFolderIds) ? patch.affectedFolderIds : release.affectedFolderIds) : release.affectedFolderIds;
+  const affectedItemIds = patch.affectedItemIds !== undefined ? (Array.isArray(patch.affectedItemIds) ? patch.affectedItemIds : release.affectedItemIds) : release.affectedItemIds;
+  const tags = patch.tags !== undefined ? (Array.isArray(patch.tags) ? patch.tags : release.tags) : release.tags;
+  db.prepare(
+    'UPDATE releases SET name = ?, date = ?, parent_id = ?, affected_folder_ids = ?, affected_item_ids = ?, tags = ? WHERE id = ?'
+  ).run(name, date, parentId, JSON.stringify(affectedFolderIds), JSON.stringify(affectedItemIds), JSON.stringify(tags), id);
+  return getRelease(id);
 }

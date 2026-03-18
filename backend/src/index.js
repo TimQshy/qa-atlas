@@ -1,19 +1,13 @@
 import express from 'express';
 import cors from 'cors';
-import { load } from './store/graph.js';
-import { load as loadFolders } from './store/folders.js';
-import { load as loadReleases } from './store/releases.js';
-import { load as loadSprints } from './store/sprints.js';
+import { init } from './db/database.js';
 import productRoutes from './routes/product.js';
 import mutationRoutes from './routes/mutations.js';
 import folderRoutes from './routes/folders.js';
 import releaseRoutes from './routes/releases.js';
 import sprintRoutes from './routes/sprints.js';
 
-load();
-loadFolders();
-loadReleases();
-loadSprints();
+init();
 
 const app = express();
 app.use(cors());

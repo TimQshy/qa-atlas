@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getSprints, getSprint, createSprint, updateSprint, save } from '../store/sprints.js';
+import { getSprints, getSprint, createSprint, updateSprint } from '../store/sprints.js';
 
 const router = Router();
 
@@ -16,7 +16,7 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, startDate, endDate, goal, affectedFolderIds, affectedItemIds, tags } = req.body ?? {};
+  const { name, startDate, endDate, goal, releaseId, parentId, affectedFolderIds, affectedItemIds, tags } = req.body ?? {};
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
@@ -25,21 +25,24 @@ router.post('/', (req, res) => {
     startDate: startDate || new Date().toISOString().slice(0, 10),
     endDate: endDate || null,
     goal: goal ?? '',
+    releaseId: releaseId || null,
+    parentId: parentId || null,
     affectedFolderIds: affectedFolderIds ?? [],
     affectedItemIds: affectedItemIds ?? [],
     tags: tags ?? []
   });
-  save();
   res.json(sprint);
 });
 
 router.put('/:id', (req, res) => {
-  const { name, startDate, endDate, goal, affectedFolderIds, affectedItemIds, tags } = req.body ?? {};
+  const { name, startDate, endDate, goal, releaseId, parentId, affectedFolderIds, affectedItemIds, tags } = req.body ?? {};
   const sprint = updateSprint(req.params.id, {
     name,
     startDate,
     endDate,
     goal,
+    releaseId,
+    parentId,
     affectedFolderIds,
     affectedItemIds,
     tags
@@ -47,7 +50,6 @@ router.put('/:id', (req, res) => {
   if (!sprint) {
     return res.status(404).json({ error: 'sprint not found' });
   }
-  save();
   res.json(sprint);
 });
 

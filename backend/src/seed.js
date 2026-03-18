@@ -1,10 +1,11 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { init } from './db/database.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '../data');
-const DATA_FILE = path.join(DATA_DIR, 'product.json');
+const db = init();
+
+// Clear existing product data for re-seeding
+db.prepare('DELETE FROM features').run();
+db.prepare('DELETE FROM modules').run();
+db.prepare('UPDATE product_settings SET product_name = ? WHERE id = 1').run('My App');
 
 const mockData = {
   productName: 'My App',
@@ -113,8 +114,25 @@ const mockData = {
   ]
 };
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+const insMod = db.prepare('INSERT INTO modules (id, name) VALUES (?, ?)');
+const insFeat = db.prepare(
+  'INSERT INTO features (id, name, module_id, coverage, test_cases, tickets, bugs, automation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+);
+
+for (const mod of mockData.modules) {
+  insMod.run(mod.id, mod.name);
+  for (const f of mod.features) {
+    insFeat.run(
+      f.id,
+      f.name,
+      f.moduleId,
+      f.coverage ?? 0,
+      JSON.stringify(f.testCases || []),
+      JSON.stringify(f.tickets || []),
+      JSON.stringify(f.bugs || []),
+      JSON.stringify(f.automation || [])
+    );
+  }
 }
-fs.writeFileSync(DATA_FILE, JSON.stringify(mockData, null, 2), 'utf-8');
-console.log('Seeded product.json with mock data.');
+
+console.log('Seeded product data to SQLite.');
