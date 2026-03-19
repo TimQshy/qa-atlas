@@ -53,6 +53,10 @@ body {
   min-width: 180px;
 }
 
+.app-tag-filter-input {
+  min-width: 240px;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 1.5rem;

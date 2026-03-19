@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import './AddDataForm.css';
 
-export default function AddDataForm({ mode, folders, selectedFolderId, onSubmit, onCancel }) {
+export default function AddDataForm({ mode, folders, selectedFolderId, selectedReleaseId, onSubmit, onCancel }) {
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
   const [folderId, setFolderId] = useState(selectedFolderId || '');
@@ -11,6 +11,7 @@ export default function AddDataForm({ mode, folders, selectedFolderId, onSubmit,
   }, [selectedFolderId]);
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('To Do');
+  const [isStable, setIsStable] = useState(false);
   const [tags, setTags] = useState('');
   const [error, setError] = useState('');
 
@@ -34,7 +35,8 @@ export default function AddDataForm({ mode, folders, selectedFolderId, onSubmit,
           folderId,
           description: description.trim(),
           status,
-          tags: parseTags(tags)
+          tags: parseTags(tags),
+          isStable
         });
       }
     } catch (err) {
@@ -46,7 +48,7 @@ export default function AddDataForm({ mode, folders, selectedFolderId, onSubmit,
 
   return (
     <form className="add-data-form" onSubmit={handleSubmit}>
-      <h4>{mode === 'folder' ? 'Новая папка' : 'Новый тест-кейс'}</h4>
+      <h4>{mode === 'folder' ? 'Новая папка' : 'Новый блок'}</h4>
       {error && <p className="add-data-form-error">{error}</p>}
 
       <label>
@@ -89,6 +91,16 @@ export default function AddDataForm({ mode, folders, selectedFolderId, onSubmit,
               <option value="Done">Done</option>
             </select>
           </label>
+          {selectedReleaseId && (
+            <label>
+              <input
+                type="checkbox"
+                checked={isStable}
+                onChange={(e) => setIsStable(e.target.checked)}
+              />
+              Stable блок (копировать при duplicate релиза)
+            </label>
+          )}
         </>
       )}
 

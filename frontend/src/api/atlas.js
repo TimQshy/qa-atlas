@@ -12,8 +12,12 @@ export async function getProductTree() {
   return res.json();
 }
 
-export async function getFolders() {
-  const res = await fetch(`${API_BASE}/folders`);
+export async function getFolders(releaseId = null) {
+  const params = new URLSearchParams();
+  if (releaseId) params.set('releaseId', releaseId);
+  const qs = params.toString();
+  const url = qs ? `${API_BASE}/folders?${qs}` : `${API_BASE}/folders`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   const data = await res.json();
   return data.folders ?? [];
@@ -30,14 +34,22 @@ export async function getFoldersTree(releaseId = null, sprintId = null) {
   return res.json();
 }
 
-export async function getFolder(id) {
-  const res = await fetch(`${API_BASE}/folders/folder/${id}`);
+function buildContextQuery(releaseId = null, sprintId = null) {
+  const params = new URLSearchParams();
+  if (releaseId) params.set('releaseId', releaseId);
+  if (sprintId) params.set('sprintId', sprintId);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export async function getFolder(id, releaseId = null, sprintId = null) {
+  const res = await fetch(`${API_BASE}/folders/folder/${id}${buildContextQuery(releaseId, sprintId)}`);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
 
-export async function getItem(id) {
-  const res = await fetch(`${API_BASE}/folders/item/${id}`);
+export async function getItem(id, releaseId = null, sprintId = null) {
+  const res = await fetch(`${API_BASE}/folders/item/${id}${buildContextQuery(releaseId, sprintId)}`);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -50,10 +62,18 @@ export async function getReleases() {
 }
 
 export async function createFolder(body) {
-  const res = await fetch(`${API_BASE}/folders/folder`, {
+  const params = new URLSearchParams();
+  if (body?.releaseId) params.set('releaseId', body.releaseId);
+  if (body?.sprintId) params.set('sprintId', body.sprintId);
+  const qs = params.toString();
+  const url = qs ? `${API_BASE}/folders/folder?${qs}` : `${API_BASE}/folders/folder`;
+  const payload = { ...body };
+  delete payload.releaseId;
+  delete payload.sprintId;
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify(payload)
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -63,10 +83,18 @@ export async function createFolder(body) {
 }
 
 export async function createItem(body) {
-  const res = await fetch(`${API_BASE}/folders/item`, {
+  const params = new URLSearchParams();
+  if (body?.releaseId) params.set('releaseId', body.releaseId);
+  if (body?.sprintId) params.set('sprintId', body.sprintId);
+  const qs = params.toString();
+  const url = qs ? `${API_BASE}/folders/item?${qs}` : `${API_BASE}/folders/item`;
+  const payload = { ...body };
+  delete payload.releaseId;
+  delete payload.sprintId;
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify(payload)
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -75,8 +103,9 @@ export async function createItem(body) {
   return res.json();
 }
 
-export async function updateFolder(id, body) {
-  const res = await fetch(`${API_BASE}/folders/folder/${id}`, {
+export async function updateFolder(id, body, releaseId = null, sprintId = null) {
+  const url = `${API_BASE}/folders/folder/${id}${buildContextQuery(releaseId, sprintId)}`;
+  const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -88,8 +117,22 @@ export async function updateFolder(id, body) {
   return res.json();
 }
 
-export async function updateItem(id, body) {
-  const res = await fetch(`${API_BASE}/folders/item/${id}`, {
+export async function deleteFolder(id, releaseId = null) {
+  const params = new URLSearchParams();
+  if (releaseId) params.set('releaseId', releaseId);
+  const qs = params.toString();
+  const url = qs ? `${API_BASE}/folders/folder/${id}?${qs}` : `${API_BASE}/folders/folder/${id}`;
+  const res = await fetch(url, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+}
+
+export async function updateItem(id, body, releaseId = null, sprintId = null) {
+  const res = await fetch(`${API_BASE}/folders/item/${id}${buildContextQuery(releaseId, sprintId)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -101,11 +144,11 @@ export async function updateItem(id, body) {
   return res.json();
 }
 
-export async function addCommentToFolder(id, text) {
-  const res = await fetch(`${API_BASE}/folders/folder/${id}/comment`, {
+export async function addCommentToFolder(id, { text, scopeType, scopeId, releaseId = null, sprintId = null }) {
+  const res = await fetch(`${API_BASE}/folders/folder/${id}/comment${buildContextQuery(releaseId, sprintId)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text })
+    body: JSON.stringify({ text, scopeType, scopeId })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -114,17 +157,63 @@ export async function addCommentToFolder(id, text) {
   return res.json();
 }
 
-export async function addCommentToItem(id, text) {
-  const res = await fetch(`${API_BASE}/folders/item/${id}/comment`, {
+export async function addCommentToItem(id, { text, scopeType, scopeId, releaseId = null, sprintId = null }) {
+  const res = await fetch(`${API_BASE}/folders/item/${id}/comment${buildContextQuery(releaseId, sprintId)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text })
+    body: JSON.stringify({ text, scopeType, scopeId })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `API error: ${res.status}`);
   }
   return res.json();
+}
+
+export async function updateFolderComment(id, commentId, body) {
+  const res = await fetch(`${API_BASE}/folders/folder/${id}/comment/${commentId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateItemComment(id, commentId, body) {
+  const res = await fetch(`${API_BASE}/folders/item/${id}/comment/${commentId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteFolderComment(id, commentId) {
+  const res = await fetch(`${API_BASE}/folders/folder/${id}/comment/${commentId}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+}
+
+export async function deleteItemComment(id, commentId) {
+  const res = await fetch(`${API_BASE}/folders/item/${id}/comment/${commentId}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
 }
 
 export async function getSprints() {
@@ -147,6 +236,29 @@ export async function createSprint(body) {
   return res.json();
 }
 
+export async function updateSprint(id, body) {
+  const res = await fetch(`${API_BASE}/sprints/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteSprint(id) {
+  const res = await fetch(`${API_BASE}/sprints/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+}
+
 export async function createRelease(body) {
   const res = await fetch(`${API_BASE}/releases`, {
     method: 'POST',
@@ -158,4 +270,27 @@ export async function createRelease(body) {
     throw new Error(err.error || `API error: ${res.status}`);
   }
   return res.json();
+}
+
+export async function updateRelease(id, body) {
+  const res = await fetch(`${API_BASE}/releases/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteRelease(id) {
+  const res = await fetch(`${API_BASE}/releases/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `API error: ${res.status}`);
+  }
 }

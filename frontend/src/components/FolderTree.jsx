@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import './FolderTree.css';
 
-function FolderNode({ node, depth, onSelect, selectedId }) {
-  const [expanded, setExpanded] = useState(true);
+function FolderNode({ node, depth, onSelect, selectedId, expandedIds, onToggleExpand }) {
   const hasChildren = node.children?.length > 0;
   const isFolder = node.type === 'folder';
   const isSelected = selectedId === node.id;
+  const expanded = expandedIds.has(node.id);
 
   const handleClick = (e) => {
     e.stopPropagation();
     if (hasChildren && isFolder) {
-      setExpanded((v) => !v);
+      onToggleExpand?.(node.id);
     }
     onSelect?.(node);
   };
@@ -45,6 +45,8 @@ function FolderNode({ node, depth, onSelect, selectedId }) {
               depth={depth + 1}
               onSelect={onSelect}
               selectedId={selectedId}
+              expandedIds={expandedIds}
+              onToggleExpand={onToggleExpand}
             />
           ))}
         </div>
@@ -54,6 +56,45 @@ function FolderNode({ node, depth, onSelect, selectedId }) {
 }
 
 export default function FolderTree({ treeData, onNodeSelect, selectedId }) {
+  const [expandedIds, setExpandedIds] = useState(new Set());
+
+  const expandableFolderIds = useMemo(() => {
+    const ids = [];
+    const walk = (node) => {
+      if (!node || node.type !== 'folder') return;
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        ids.push(node.id);
+      }
+      for (const child of node.children ?? []) {
+        walk(child);
+      }
+    };
+    for (const rootChild of treeData?.children ?? []) {
+      walk(rootChild);
+    }
+    return ids;
+  }, [treeData]);
+
+  const handleToggleExpand = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleCollapseAll = () => {
+    setExpandedIds(new Set());
+  };
+
+  const handleExpandAll = () => {
+    setExpandedIds(new Set(expandableFolderIds));
+  };
+
   if (!treeData) {
     return (
       <div className="folder-tree folder-tree--empty">
@@ -74,10 +115,20 @@ export default function FolderTree({ treeData, onNodeSelect, selectedId }) {
   return (
     <div className="folder-tree">
       <div className="folder-tree-header">
-        <span className="folder-tree-root-name">{treeData.name ?? 'Test Repository'}</span>
-        {treeData.totalCount != null && (
-          <span className="folder-tree-root-count">({treeData.totalCount})</span>
-        )}
+        <div className="folder-tree-header-main">
+          <span className="folder-tree-root-name">{treeData.name ?? 'Test Repository'}</span>
+          {treeData.totalCount != null && (
+            <span className="folder-tree-root-count">({treeData.totalCount})</span>
+          )}
+        </div>
+        <div className="folder-tree-header-actions">
+          <button type="button" className="folder-tree-action-btn" onClick={handleExpandAll}>
+            Развернуть всё
+          </button>
+          <button type="button" className="folder-tree-action-btn" onClick={handleCollapseAll}>
+            Свернуть всё
+          </button>
+        </div>
       </div>
       <div className="folder-tree-list">
         {children.map((node) => (
@@ -87,6 +138,8 @@ export default function FolderTree({ treeData, onNodeSelect, selectedId }) {
             depth={0}
             onSelect={onNodeSelect}
             selectedId={selectedId}
+            expandedIds={expandedIds}
+            onToggleExpand={handleToggleExpand}
           />
         ))}
       </div>

@@ -127,6 +127,29 @@
   color: #94a3b8;
 }
 
+.description-panel-comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.description-panel-comment-scope {
+  font-size: 0.7rem;
+  color: #475569;
+  background: #e2e8f0;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+}
+
+.description-panel-comment-edit {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin-bottom: 0.4rem;
+}
+
 .description-panel-comment-form textarea {
   width: 100%;
   padding: 0.5rem;
@@ -159,4 +182,63 @@
 .btn-add-comment:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.description-panel-comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.description-panel-comment-actions select {
+  flex: 1;
+  min-width: 160px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.btn-comment-secondary {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #334155;
+}
+
+.btn-comment-secondary.btn-comment-danger {
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.description-panel-folder-form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.description-panel-folder-form label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.description-panel-folder-form input,
+.description-panel-folder-form select {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.description-panel-folder-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.description-panel-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.8rem;
 }
