@@ -29,4 +29,4 @@ When the user requests to start QA Atlas (e.g. `/startQAtlas`):
 ## Notes
 
 - If backend or frontend is already running (EADDRINUSE), inform the user and skip that step.
-- Backend loads data from `backend/data/folders.json`, `releases.json`, `sprints.json`.
+- Backend loads data from `backend/data/folders.json`, `releases.json`.

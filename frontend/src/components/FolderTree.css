@@ -83,12 +83,12 @@
 }
 
 .folder-tree-row--affected {
-  background: #fef2f2;
-  border-left: 3px solid #dc2626;
+  background: #ecfdf3;
+  border-left: 3px solid #16a34a;
 }
 
 .folder-tree-row--affected.folder-tree-row--selected {
-  background: #fee2e2;
+  background: #dcfce7;
 }
 
 .folder-tree-icon {

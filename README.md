@@ -15,7 +15,7 @@ npm install && npm start
 2. **Frontend:** `cd frontend && npm start` (port 5173).
 3. Open http://localhost:5173 in your browser.
 
-**Seed data:** Folders and releases load from `backend/data/folders.json` and `backend/data/releases.json` on startup. Data is sourced from Enquiry Tracker (eq-monorepo) regression test plan — see [docs/DATA_SOURCE.md](docs/DATA_SOURCE.md).
+**Seed data:** On first launch, JSON data is migrated to SQLite (`backend/data/qa-atlas.db`). Source data comes from Enquiry Tracker (eq-monorepo) regression test plan — see [docs/DATA_SOURCE.md](docs/DATA_SOURCE.md).
 
 ## Features
 
@@ -27,10 +27,11 @@ npm install && npm start
 ## Stack
 
 - **Frontend:** React, Vite.
-- **Backend:** Node.js, Express, JSON file storage.
+- **Backend:** Node.js, Express, SQLite (`better-sqlite3`).
 - **AI:** REST API for releases (Cursor skill integration).
 
 ## Docs
 
 - **ROADMAP.md** — Architecture, data model, phases.
+- **docs/MVP_ROADMAP_BEGINNER.md** — Full beginner-friendly end-to-end MVP roadmap.
 - **docs/CURSOR_SKILL_RELEASES.md** — How to add/update releases from a Cursor skill.

@@ -7,7 +7,7 @@ function normalizeComment(comment) {
     text: String(comment?.text ?? '').trim(),
     createdAt: comment?.created_at || comment?.createdAt || new Date().toISOString(),
     updatedAt: comment?.updated_at || comment?.updatedAt || null,
-    scopeType: comment?.scope_type === 'release' || comment?.scope_type === 'sprint' ? comment.scope_type : (comment?.scopeType === 'release' || comment?.scopeType === 'sprint' ? comment.scopeType : null),
+    scopeType: comment?.scope_type === 'release' ? comment.scope_type : (comment?.scopeType === 'release' ? comment.scopeType : null),
     scopeId: comment?.scope_id ?? comment?.scopeId ?? null
   };
 }
@@ -18,6 +18,7 @@ function rowToFolder(row) {
     id: row.id,
     name: row.name,
     parentId: row.parent_id,
+    releaseId: row.release_id ?? null,
     tags: JSON.parse(row.tags || '[]'),
     comments: comments.map(normalizeComment)
   };
@@ -29,6 +30,8 @@ function rowToItem(row) {
     id: row.id,
     name: row.name,
     folderId: row.folder_id,
+    releaseId: row.release_id ?? null,
+    isStable: Number(row.is_stable || 0) > 0,
     description: row.description ?? '',
     status: row.status ?? 'To Do',
     tags: JSON.parse(row.tags || '[]'),
@@ -37,6 +40,12 @@ function rowToItem(row) {
     bugs: JSON.parse(row.bugs || '[]'),
     comments: comments.map(normalizeComment)
   };
+}
+
+function isScopedToRelease(entityReleaseId, selectedReleaseId) {
+  if (selectedReleaseId === '__ANY_RELEASE__') return true;
+  if (!selectedReleaseId) return !entityReleaseId;
+  return !entityReleaseId || entityReleaseId === selectedReleaseId;
 }
 
 function rowToReleaseFolderOverride(row) {
@@ -112,10 +121,11 @@ export function getFolders(releaseId = null) {
     ) as comments_json
     FROM folders f
   `).all();
-  return applyReleaseFolderOverrides(rows.map(rowToFolder), releaseId);
+  const scopedFolders = rows.map(rowToFolder).filter((folder) => isScopedToRelease(folder.releaseId, releaseId));
+  return applyReleaseFolderOverrides(scopedFolders, releaseId);
 }
 
-export function getItems() {
+export function getItems(releaseId = null) {
   const db = getDb();
   const rows = db.prepare(`
     SELECT i.*, COALESCE(
@@ -125,14 +135,27 @@ export function getItems() {
     ) as comments_json
     FROM items i
   `).all();
-  return rows.map(rowToItem);
+  return rows.map(rowToItem).filter((item) => isScopedToRelease(item.releaseId, releaseId));
 }
 
 export function getFolder(id, releaseId = null) {
   return getFolders(releaseId).find((folder) => folder.id === id) ?? null;
 }
 
-export function getItem(id) {
+function getFolderAny(id) {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT f.*, COALESCE(
+      (SELECT json_group_array(json_object('id', c.id, 'text', c.text, 'created_at', c.created_at, 'updated_at', c.updated_at, 'scope_type', c.scope_type, 'scope_id', c.scope_id))
+       FROM folder_comments c WHERE c.folder_id = f.id),
+      '[]'
+    ) as comments_json
+    FROM folders f WHERE f.id = ?
+  `).get(id);
+  return row ? rowToFolder(row) : null;
+}
+
+export function getItem(id, releaseId = null) {
   const db = getDb();
   const row = db.prepare(`
     SELECT i.*, COALESCE(
@@ -142,46 +165,56 @@ export function getItem(id) {
     ) as comments_json
     FROM items i WHERE i.id = ?
   `).get(id);
-  return row ? rowToItem(row) : null;
+  if (!row) return null;
+  const item = rowToItem(row);
+  if (!isScopedToRelease(item.releaseId, releaseId)) return null;
+  return item;
+}
+
+function getItemAny(id) {
+  return getItem(id, '__ANY_RELEASE__');
 }
 
 export function getItemsByFolder(folderId, releaseId = null) {
   if (releaseId && !getFolder(folderId, releaseId)) {
     return [];
   }
-  const db = getDb();
-  const rows = db.prepare(`
-    SELECT i.*, COALESCE(
-      (SELECT json_group_array(json_object('id', c.id, 'text', c.text, 'created_at', c.created_at, 'updated_at', c.updated_at, 'scope_type', c.scope_type, 'scope_id', c.scope_id))
-       FROM item_comments c WHERE c.item_id = i.id),
-      '[]'
-    ) as comments_json
-    FROM items i WHERE i.folder_id = ?
-  `).all(folderId);
-  return rows.map(rowToItem);
+  return getItems(releaseId).filter((item) => item.folderId === folderId);
 }
 
 export function getChildFolders(parentId, releaseId = null) {
   return getFolders(releaseId).filter((folder) => (folder.parentId ?? null) === (parentId ?? null));
 }
 
-export function createFolder({ name, parentId = null, tags = [] }) {
+export function createFolder({ name, parentId = null, tags = [], releaseId = null }) {
   const db = getDb();
   const id = uuid();
-  db.prepare('INSERT INTO folders (id, name, parent_id, tags) VALUES (?, ?, ?, ?)').run(
+  db.prepare('INSERT INTO folders (id, name, parent_id, tags, release_id) VALUES (?, ?, ?, ?, ?)').run(
     id,
     (name ?? '').trim(),
     parentId || null,
-    JSON.stringify(Array.isArray(tags) ? tags : [])
+    JSON.stringify(Array.isArray(tags) ? tags : []),
+    releaseId || null
   );
-  return getFolder(id);
+  return getFolder(id, releaseId || null);
 }
 
-export function createItem({ name, folderId, description = '', status = 'To Do', tags = [], parentId = null, tickets = [], bugs = [] }) {
+export function createItem({
+  name,
+  folderId,
+  description = '',
+  status = 'To Do',
+  tags = [],
+  parentId = null,
+  tickets = [],
+  bugs = [],
+  releaseId = null,
+  isStable = false
+}) {
   const db = getDb();
   const id = uuid();
   db.prepare(
-    'INSERT INTO items (id, name, folder_id, description, status, tags, parent_id, tickets, bugs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO items (id, name, folder_id, description, status, tags, parent_id, tickets, bugs, release_id, is_stable) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(
     id,
     (name ?? '').trim(),
@@ -191,9 +224,11 @@ export function createItem({ name, folderId, description = '', status = 'To Do',
     JSON.stringify(Array.isArray(tags) ? tags : []),
     parentId || null,
     JSON.stringify(Array.isArray(tickets) ? tickets : []),
-    JSON.stringify(Array.isArray(bugs) ? bugs : [])
+    JSON.stringify(Array.isArray(bugs) ? bugs : []),
+    releaseId || null,
+    isStable ? 1 : 0
   );
-  return getItem(id);
+  return getItem(id, releaseId || null);
 }
 
 export function updateFolder(id, patch, releaseId = null) {
@@ -203,6 +238,10 @@ export function updateFolder(id, patch, releaseId = null) {
   const name = patch.name !== undefined ? String(patch.name).trim() : folder.name;
   const parentId = patch.parentId !== undefined ? (patch.parentId || null) : folder.parentId;
   const tags = patch.tags !== undefined ? (Array.isArray(patch.tags) ? patch.tags : folder.tags) : folder.tags;
+  if (folder.releaseId && folder.releaseId === releaseId) {
+    db.prepare('UPDATE folders SET name = ?, parent_id = ?, tags = ? WHERE id = ?').run(name, parentId, JSON.stringify(tags), id);
+    return getFolder(id, releaseId);
+  }
   if (releaseId) {
     db.prepare(`
       INSERT INTO release_folder_overrides (release_id, folder_id, name, parent_id, tags, is_deleted, updated_at)
@@ -231,19 +270,19 @@ function isCommentScoped(comment) {
   return Boolean(comment?.scopeType && comment?.scopeId);
 }
 
+function isCommentMatchedByScope(comment, scopeContext, includeGlobal = true) {
+  if (!scopeContext) return true;
+  if (!isCommentScoped(comment)) return includeGlobal;
+  if (comment.scopeType === 'release') return scopeContext.releaseIds.has(comment.scopeId);
+  return false;
+}
+
 export function filterCommentsByScope(comments = [], scopeContext = null) {
   const hasScopeFilter = Boolean(
-    scopeContext &&
-      ((scopeContext.releaseIds && scopeContext.releaseIds.size > 0) ||
-        (scopeContext.sprintIds && scopeContext.sprintIds.size > 0))
+    scopeContext && scopeContext.releaseIds && scopeContext.releaseIds.size > 0
   );
   if (!hasScopeFilter) return comments;
-  return comments.filter((comment) => {
-    if (!isCommentScoped(comment)) return true;
-    if (comment.scopeType === 'release') return scopeContext.releaseIds.has(comment.scopeId);
-    if (comment.scopeType === 'sprint') return scopeContext.sprintIds.has(comment.scopeId);
-    return false;
-  });
+  return comments.filter((comment) => isCommentMatchedByScope(comment, scopeContext, true));
 }
 
 function buildComment(text, scopeType, scopeId) {
@@ -260,8 +299,117 @@ function buildInClause(ids = []) {
   return ids.map(() => '?').join(', ');
 }
 
+function remapCommentScope(commentRow, sourceReleaseId, targetReleaseId) {
+  if (commentRow.scope_type === 'release' && commentRow.scope_id === sourceReleaseId) {
+    return targetReleaseId;
+  }
+  return commentRow.scope_id ?? null;
+}
+
+export function cloneReleaseScopedData(sourceReleaseId, targetReleaseId, { copyOnlyStableItems = true, copyComments = false } = {}) {
+  const db = getDb();
+  if (!sourceReleaseId || !targetReleaseId || sourceReleaseId === targetReleaseId) return;
+
+  db.prepare(
+    `INSERT OR REPLACE INTO release_folder_overrides (release_id, folder_id, name, parent_id, tags, is_deleted, updated_at)
+     SELECT ?, folder_id, name, parent_id, tags, is_deleted, ?
+     FROM release_folder_overrides
+     WHERE release_id = ?`
+  ).run(targetReleaseId, new Date().toISOString(), sourceReleaseId);
+
+  const sourceFolders = db.prepare('SELECT id, name, parent_id, tags FROM folders WHERE release_id = ?').all(sourceReleaseId);
+  const folderIdMap = new Map();
+  const insertFolder = db.prepare('INSERT INTO folders (id, name, parent_id, tags, release_id) VALUES (?, ?, ?, ?, ?)');
+  for (const folder of sourceFolders) {
+    folderIdMap.set(folder.id, uuid());
+  }
+  for (const folder of sourceFolders) {
+    insertFolder.run(
+      folderIdMap.get(folder.id),
+      folder.name,
+      folderIdMap.get(folder.parent_id) ?? folder.parent_id ?? null,
+      folder.tags ?? '[]',
+      targetReleaseId
+    );
+  }
+
+  const sourceFolderIds = sourceFolders.map((folder) => folder.id);
+  if (copyComments && sourceFolderIds.length > 0) {
+    const inClause = buildInClause(sourceFolderIds);
+    const folderComments = db
+      .prepare(`SELECT id, folder_id, text, created_at, updated_at, scope_type, scope_id FROM folder_comments WHERE folder_id IN (${inClause})`)
+      .all(...sourceFolderIds);
+    const insertFolderComment = db.prepare(
+      'INSERT INTO folder_comments (id, folder_id, text, created_at, updated_at, scope_type, scope_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    for (const comment of folderComments) {
+      insertFolderComment.run(
+        uuid(),
+        folderIdMap.get(comment.folder_id) ?? comment.folder_id,
+        comment.text,
+        comment.created_at,
+        comment.updated_at ?? null,
+        comment.scope_type ?? null,
+        remapCommentScope(comment, sourceReleaseId, targetReleaseId)
+      );
+    }
+  }
+
+  const sourceItems = db
+    .prepare(
+      `SELECT id, name, folder_id, description, status, tags, parent_id, tickets, bugs, is_stable
+       FROM items
+       WHERE release_id = ? ${copyOnlyStableItems ? 'AND is_stable = 1' : ''}`
+    )
+    .all(sourceReleaseId);
+  const itemIdMap = new Map();
+  const insertItem = db.prepare(
+    'INSERT INTO items (id, name, folder_id, description, status, tags, parent_id, tickets, bugs, release_id, is_stable) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  );
+  for (const item of sourceItems) {
+    itemIdMap.set(item.id, uuid());
+  }
+  for (const item of sourceItems) {
+    insertItem.run(
+      itemIdMap.get(item.id),
+      item.name,
+      folderIdMap.get(item.folder_id) ?? item.folder_id,
+      item.description ?? '',
+      item.status ?? 'To Do',
+      item.tags ?? '[]',
+      itemIdMap.get(item.parent_id) ?? item.parent_id ?? null,
+      item.tickets ?? '[]',
+      item.bugs ?? '[]',
+      targetReleaseId,
+      Number(item.is_stable || 0) > 0 ? 1 : 0
+    );
+  }
+
+  const sourceItemIds = sourceItems.map((item) => item.id);
+  if (copyComments && sourceItemIds.length > 0) {
+    const inClause = buildInClause(sourceItemIds);
+    const itemComments = db
+      .prepare(`SELECT id, item_id, text, created_at, updated_at, scope_type, scope_id FROM item_comments WHERE item_id IN (${inClause})`)
+      .all(...sourceItemIds);
+    const insertItemComment = db.prepare(
+      'INSERT INTO item_comments (id, item_id, text, created_at, updated_at, scope_type, scope_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    for (const comment of itemComments) {
+      insertItemComment.run(
+        uuid(),
+        itemIdMap.get(comment.item_id) ?? comment.item_id,
+        comment.text,
+        comment.created_at,
+        comment.updated_at ?? null,
+        comment.scope_type ?? null,
+        remapCommentScope(comment, sourceReleaseId, targetReleaseId)
+      );
+    }
+  }
+}
+
 export function addCommentToFolder(id, { text, scopeType, scopeId }) {
-  const folder = getFolder(id);
+  const folder = getFolderAny(id);
   if (!folder) return null;
   const comment = buildComment(text, scopeType, scopeId);
   const db = getDb();
@@ -278,7 +426,7 @@ export function addCommentToFolder(id, { text, scopeType, scopeId }) {
 }
 
 export function addCommentToItem(id, { text, scopeType, scopeId }) {
-  const item = getItem(id);
+  const item = getItemAny(id);
   if (!item) return null;
   const comment = buildComment(text, scopeType, scopeId);
   const db = getDb();
@@ -295,7 +443,7 @@ export function addCommentToItem(id, { text, scopeType, scopeId }) {
 }
 
 export function updateFolderComment(folderId, commentId, patch) {
-  const folder = getFolder(folderId);
+  const folder = getFolderAny(folderId);
   if (!folder) return null;
   const comment = folder.comments.find((c) => c.id === commentId);
   if (!comment) return null;
@@ -314,7 +462,7 @@ export function updateFolderComment(folderId, commentId, patch) {
 }
 
 export function updateItemComment(itemId, commentId, patch) {
-  const item = getItem(itemId);
+  const item = getItemAny(itemId);
   if (!item) return null;
   const comment = item.comments.find((c) => c.id === commentId);
   if (!comment) return null;
@@ -349,6 +497,41 @@ export function deleteFolder(id, releaseId = null) {
   if (!folder) return false;
 
   const db = getDb();
+  if (releaseId && folder.releaseId === releaseId) {
+    const folders = getFolders(releaseId);
+    const childrenByParent = new Map();
+    for (const node of folders) {
+      const key = node.parentId ?? '__ROOT__';
+      const list = childrenByParent.get(key) ?? [];
+      list.push(node.id);
+      childrenByParent.set(key, list);
+    }
+    const folderIds = [];
+    const queue = [id];
+    const seen = new Set();
+    while (queue.length) {
+      const current = queue.shift();
+      if (seen.has(current)) continue;
+      seen.add(current);
+      folderIds.push(current);
+      for (const childId of childrenByParent.get(current) ?? []) {
+        queue.push(childId);
+      }
+    }
+    const folderIdSet = new Set(folderIds);
+    const itemIds = getItems(releaseId)
+      .filter((item) => folderIdSet.has(item.folderId))
+      .map((item) => item.id);
+    if (itemIds.length > 0) {
+      const itemInClause = buildInClause(itemIds);
+      db.prepare(`DELETE FROM item_comments WHERE item_id IN (${itemInClause})`).run(...itemIds);
+      db.prepare(`DELETE FROM items WHERE id IN (${itemInClause})`).run(...itemIds);
+    }
+    const folderInClause = buildInClause(folderIds);
+    db.prepare(`DELETE FROM folder_comments WHERE folder_id IN (${folderInClause})`).run(...folderIds);
+    db.prepare(`DELETE FROM folders WHERE id IN (${folderInClause})`).run(...folderIds);
+    return true;
+  }
   if (releaseId) {
     const folders = getFolders(releaseId);
     const childrenByParent = new Map();
@@ -401,7 +584,7 @@ export function deleteFolder(id, releaseId = null) {
   }
 
   const folderIdSet = new Set(folderIds);
-  const itemIds = getItems()
+  const itemIds = getItems('__ANY_RELEASE__')
     .filter((item) => folderIdSet.has(item.folderId))
     .map((item) => item.id);
 
@@ -419,7 +602,7 @@ export function deleteFolder(id, releaseId = null) {
 }
 
 export function updateItem(id, patch) {
-  const item = getItem(id);
+  const item = getItemAny(id);
   if (!item) return null;
   const db = getDb();
   const name = patch.name !== undefined ? String(patch.name).trim() : item.name;
@@ -430,9 +613,10 @@ export function updateItem(id, patch) {
   const parentId = patch.parentId !== undefined ? (patch.parentId || null) : item.parentId;
   const tickets = patch.tickets !== undefined ? (Array.isArray(patch.tickets) ? patch.tickets : item.tickets) : item.tickets;
   const bugs = patch.bugs !== undefined ? (Array.isArray(patch.bugs) ? patch.bugs : item.bugs) : item.bugs;
+  const isStable = patch.isStable !== undefined ? Boolean(patch.isStable) : Boolean(item.isStable);
   db.prepare(
-    'UPDATE items SET name = ?, folder_id = ?, description = ?, status = ?, tags = ?, parent_id = ?, tickets = ?, bugs = ? WHERE id = ?'
-  ).run(name, folderId, description, status, JSON.stringify(tags), parentId, JSON.stringify(tickets), JSON.stringify(bugs), id);
+    'UPDATE items SET name = ?, folder_id = ?, description = ?, status = ?, tags = ?, parent_id = ?, tickets = ?, bugs = ?, is_stable = ? WHERE id = ?'
+  ).run(name, folderId, description, status, JSON.stringify(tags), parentId, JSON.stringify(tickets), JSON.stringify(bugs), isStable ? 1 : 0, id);
   if (patch.comments !== undefined) {
     db.prepare('DELETE FROM item_comments WHERE item_id = ?').run(id);
     const ins = db.prepare('INSERT INTO item_comments (id, item_id, text, created_at, updated_at, scope_type, scope_id) VALUES (?, ?, ?, ?, ?, ?, ?)');
@@ -440,13 +624,13 @@ export function updateItem(id, patch) {
       ins.run(c.id, id, c.text, c.createdAt || new Date().toISOString(), c.updatedAt || null, c.scopeType || null, c.scopeId || null);
     }
   }
-  return getItem(id);
+  return getItemAny(id);
 }
 
-function collectAffectedIds(releaseOrSprint) {
-  const folderIds = new Set(releaseOrSprint?.affectedFolderIds ?? []);
-  const itemIds = new Set(releaseOrSprint?.affectedItemIds ?? []);
-  const tags = new Set((releaseOrSprint?.tags ?? []).map((t) => String(t).toUpperCase()));
+function collectAffectedIds(release) {
+  const folderIds = new Set(release?.affectedFolderIds ?? []);
+  const itemIds = new Set(release?.affectedItemIds ?? []);
+  const tags = new Set((release?.tags ?? []).map((t) => String(t).toUpperCase()));
   const folders = getFolders();
   const items = getItems();
   for (const folder of folders) {
@@ -458,15 +642,6 @@ function collectAffectedIds(releaseOrSprint) {
   return { folderIds, itemIds };
 }
 
-function mergeAffectedIds(release, sprint) {
-  const r = release ? collectAffectedIds(release) : { folderIds: new Set(), itemIds: new Set() };
-  const s = sprint ? collectAffectedIds(sprint) : { folderIds: new Set(), itemIds: new Set() };
-  return {
-    folderIds: new Set([...r.folderIds, ...s.folderIds]),
-    itemIds: new Set([...r.itemIds, ...s.itemIds])
-  };
-}
-
 function isFolderAffected(folderId, affectedFolderIds, affectedItemIds, releaseId = null) {
   if (affectedFolderIds.has(folderId)) return true;
   const folder = getFolder(folderId, releaseId);
@@ -476,9 +651,8 @@ function isFolderAffected(folderId, affectedFolderIds, affectedItemIds, releaseI
 
 function isItemAffected(itemId, affectedFolderIds, affectedItemIds, releaseId = null) {
   if (affectedItemIds.has(itemId)) return true;
-  const item = getItem(itemId);
+  const item = getItem(itemId, releaseId);
   if (!item) return false;
-  if (releaseId && !getFolder(item.folderId, releaseId)) return false;
   if (isFolderAffected(item.folderId, affectedFolderIds, affectedItemIds, releaseId)) return true;
   if (item.parentId && affectedItemIds.has(item.parentId)) return true;
   if (item.parentId) return isItemAffected(item.parentId, affectedFolderIds, affectedItemIds, releaseId);
@@ -488,31 +662,33 @@ function isItemAffected(itemId, affectedFolderIds, affectedItemIds, releaseId = 
 function folderHasComments(folderId, scopeContext, releaseId = null) {
   const folder = getFolder(folderId, releaseId);
   if (!folder) return false;
-  if (filterCommentsByScope(folder.comments ?? [], scopeContext).length > 0) return true;
+  if ((folder.comments ?? []).some((comment) => isCommentMatchedByScope(comment, scopeContext, false))) return true;
   for (const sub of getChildFolders(folderId, releaseId)) {
     if (folderHasComments(sub.id, scopeContext, releaseId)) return true;
   }
   for (const item of getItemsByFolder(folderId, releaseId)) {
-    if (filterCommentsByScope(item.comments ?? [], scopeContext).length > 0) return true;
-    if (itemHasDescendantWithComment(item.id, scopeContext)) return true;
+    if ((item.comments ?? []).some((comment) => isCommentMatchedByScope(comment, scopeContext, false))) return true;
+    if (itemHasDescendantWithComment(item.id, scopeContext, releaseId)) return true;
   }
   return false;
 }
 
-function itemHasDescendantWithComment(itemId, scopeContext) {
-  const items = getItems();
+function itemHasDescendantWithComment(itemId, scopeContext, releaseId = null) {
+  const items = getItems(releaseId);
   const children = items.filter((i) => i.parentId === itemId);
   for (const c of children) {
-    if (filterCommentsByScope(c.comments ?? [], scopeContext).length > 0) return true;
-    if (itemHasDescendantWithComment(c.id, scopeContext)) return true;
+    if ((c.comments ?? []).some((comment) => isCommentMatchedByScope(comment, scopeContext, false))) return true;
+    if (itemHasDescendantWithComment(c.id, scopeContext, releaseId)) return true;
   }
   return false;
 }
 
-export function getFoldersTree(release = null, sprint = null, scopeContext = null, releaseId = null) {
-  const { folderIds: affectedFolderIds, itemIds: affectedItemIds } = mergeAffectedIds(release, sprint);
+export function getFoldersTree(release = null, scopeContext = null, releaseId = null) {
+  const { folderIds: affectedFolderIds, itemIds: affectedItemIds } = release
+    ? collectAffectedIds(release)
+    : { folderIds: new Set(), itemIds: new Set() };
   const visibleFolderIds = new Set(getFolders(releaseId).map((folder) => folder.id));
-  const items = getItems().filter((item) => visibleFolderIds.has(item.folderId));
+  const items = getItems(releaseId).filter((item) => visibleFolderIds.has(item.folderId));
 
   function buildFolderNode(folder) {
     const children = [];
@@ -522,7 +698,7 @@ export function getFoldersTree(release = null, sprint = null, scopeContext = nul
     for (const item of folderItems) children.push(buildItemNode(item));
     const affectedByRelease = isFolderAffected(folder.id, affectedFolderIds, affectedItemIds, releaseId);
     const affectedByComment = folderHasComments(folder.id, scopeContext, releaseId);
-    const affected = affectedByRelease || affectedByComment;
+    const affected = affectedByRelease;
     return {
       type: 'folder',
       id: folder.id,
@@ -539,9 +715,9 @@ export function getFoldersTree(release = null, sprint = null, scopeContext = nul
     const children = items.filter((i) => i.parentId === item.id).map((i) => buildItemNode(i));
     const affectedByRelease = isItemAffected(item.id, affectedFolderIds, affectedItemIds, releaseId);
     const hasComment =
-      filterCommentsByScope(item.comments ?? [], scopeContext).length > 0 ||
-      itemHasDescendantWithComment(item.id, scopeContext);
-    const affected = affectedByRelease || hasComment;
+      (item.comments ?? []).some((comment) => isCommentMatchedByScope(comment, scopeContext, false)) ||
+      itemHasDescendantWithComment(item.id, scopeContext, releaseId);
+    const affected = affectedByRelease;
     return {
       type: 'item',
       id: item.id,
@@ -583,9 +759,8 @@ export function getFolderScoped(id, scopeContext = null, releaseId = null) {
 }
 
 export function getItemScoped(id, scopeContext = null, releaseId = null) {
-  const item = getItem(id);
+  const item = getItem(id, releaseId);
   if (!item) return null;
-  if (releaseId && !getFolder(item.folderId, releaseId)) return null;
   return {
     ...item,
     comments: filterCommentsByScope(item.comments ?? [], scopeContext)

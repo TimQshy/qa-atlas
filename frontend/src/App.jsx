@@ -5,15 +5,11 @@ import {
   getFolder,
   getItem,
   getReleases,
-  getSprints,
   createFolder,
   createItem,
   updateFolder,
   updateItem,
   deleteFolder,
-  createSprint,
-  updateSprint,
-  deleteSprint,
   createRelease,
   updateRelease,
   deleteRelease
@@ -21,30 +17,8 @@ import {
 import FolderTree from './components/FolderTree';
 import DescriptionPanel from './components/DescriptionPanel';
 import AddDataForm from './components/AddDataForm';
-import AddSprintForm from './components/AddSprintForm';
 import AddReleaseForm from './components/AddReleaseForm';
 import './App.css';
-
-function getDescendantReleaseIds(releases, rootId) {
-  if (!rootId) return [];
-  const out = [];
-  const queue = [rootId];
-  const seen = new Set();
-
-  while (queue.length) {
-    const current = queue.shift();
-    if (seen.has(current)) continue;
-    seen.add(current);
-    out.push(current);
-    for (const release of releases) {
-      if ((release.parentId ?? null) === current) {
-        queue.push(release.id);
-      }
-    }
-  }
-
-  return out;
-}
 
 function normalizeTag(value) {
   return String(value ?? '')
@@ -104,74 +78,66 @@ function App() {
   const [treeData, setTreeData] = useState(null);
   const [folders, setFolders] = useState([]);
   const [releases, setReleases] = useState([]);
-  const [sprints, setSprints] = useState([]);
   const [selectedReleaseId, setSelectedReleaseId] = useState('');
-  const [selectedSprintId, setSelectedSprintId] = useState('');
   const [selection, setSelection] = useState(null);
   const [folderData, setFolderData] = useState(null);
   const [itemData, setItemData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [addMode, setAddMode] = useState(null);
-  const [showSprintForm, setShowSprintForm] = useState(false);
   const [showReleaseForm, setShowReleaseForm] = useState(false);
   const [editingReleaseId, setEditingReleaseId] = useState('');
-  const [editingSprintId, setEditingSprintId] = useState('');
   const [tagFilterInput, setTagFilterInput] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [tree, foldersList, releasesList, sprintsList] = await Promise.all([
-        getFoldersTree(selectedReleaseId || null, selectedSprintId || null),
+      const [tree, foldersList, releasesList] = await Promise.all([
+        getFoldersTree(selectedReleaseId || null),
         getFolders(selectedReleaseId || null),
-        getReleases(),
-        getSprints()
+        getReleases()
       ]);
       setTreeData(tree);
       setFolders(foldersList);
       setReleases(releasesList);
-      setSprints(sprintsList);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [selectedReleaseId, selectedSprintId]);
+  }, [selectedReleaseId]);
 
   const handleAddFolder = useCallback(
     async (body) => {
       await createFolder({
         ...body,
-        releaseId: selectedReleaseId || null,
-        sprintId: selectedSprintId || null
+        releaseId: selectedReleaseId || null
       });
       setAddMode(null);
       refresh();
     },
-    [refresh, selectedReleaseId, selectedSprintId]
+    [refresh, selectedReleaseId]
   );
 
   const handleAddItem = useCallback(
     async (body) => {
       await createItem({
         ...body,
-        releaseId: selectedReleaseId || null,
-        sprintId: selectedSprintId || null
+        releaseId: selectedReleaseId || null
       });
       setAddMode(null);
       refresh();
     },
-    [refresh, selectedReleaseId, selectedSprintId]
+    [refresh, selectedReleaseId]
   );
 
   const handleUpdateFolder = useCallback(
     async (id, patch) => {
-      await updateFolder(id, patch, selectedReleaseId || null, selectedSprintId || null);
+      await updateFolder(id, patch, selectedReleaseId || null);
       refresh();
     },
-    [refresh, selectedReleaseId, selectedSprintId]
+    [refresh, selectedReleaseId]
   );
 
   const handleDeleteFolder = useCallback(
@@ -187,24 +153,10 @@ function App() {
 
   const handleUpdateItem = useCallback(
     async (id, patch) => {
-      await updateItem(id, patch, selectedReleaseId || null, selectedSprintId || null);
+      await updateItem(id, patch, selectedReleaseId || null);
       refresh();
     },
-    [refresh, selectedReleaseId, selectedSprintId]
-  );
-
-  const handleAddSprint = useCallback(
-    async (body) => {
-      if (editingSprintId) {
-        await updateSprint(editingSprintId, body);
-      } else {
-        await createSprint(body);
-      }
-      setEditingSprintId('');
-      setShowSprintForm(false);
-      refresh();
-    },
-    [editingSprintId, refresh]
+    [refresh, selectedReleaseId]
   );
 
   const handleAddRelease = useCallback(
@@ -224,38 +176,19 @@ function App() {
   const handleDeleteRelease = useCallback(async () => {
     if (!selectedReleaseId) return;
     const release = releases.find((r) => r.id === selectedReleaseId);
-    const ok = window.confirm(`Удалить релиз "${release?.name ?? selectedReleaseId}" и его дочерние релизы/спринты?`);
+    const ok = window.confirm(`Удалить релиз "${release?.name ?? selectedReleaseId}" и его дочерние релизы?`);
     if (!ok) return;
     await deleteRelease(selectedReleaseId);
     setSelectedReleaseId('');
-    setSelectedSprintId('');
     setShowReleaseForm(false);
     setEditingReleaseId('');
     refresh();
   }, [refresh, releases, selectedReleaseId]);
 
-  const handleDeleteSprint = useCallback(async () => {
-    if (!selectedSprintId) return;
-    const sprint = sprints.find((s) => s.id === selectedSprintId);
-    const ok = window.confirm(`Удалить спринт "${sprint?.name ?? selectedSprintId}" и вложенные спринты?`);
-    if (!ok) return;
-    await deleteSprint(selectedSprintId);
-    setSelectedSprintId('');
-    setShowSprintForm(false);
-    setEditingSprintId('');
-    refresh();
-  }, [refresh, selectedSprintId, sprints]);
-
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  const visibleSprintIds = selectedReleaseId
-    ? new Set(getDescendantReleaseIds(releases, selectedReleaseId))
-    : null;
-  const visibleSprints = visibleSprintIds
-    ? sprints.filter((s) => s.releaseId && visibleSprintIds.has(s.releaseId))
-    : sprints;
   const activeTagFilter = useMemo(() => buildTagFilterSet(tagFilterInput), [tagFilterInput]);
   const availableTreeTags = useMemo(() => collectTagsFromTree(treeData), [treeData]);
   const filteredTreeData = useMemo(
@@ -263,14 +196,40 @@ function App() {
     [treeData, activeTagFilter]
   );
   const selectedRelease = releases.find((r) => r.id === selectedReleaseId) ?? null;
-  const selectedSprint = sprints.find((s) => s.id === selectedSprintId) ?? null;
+  const highlightedFolderIds = useMemo(
+    () => new Set(selectedRelease?.affectedFolderIds ?? []),
+    [selectedRelease]
+  );
+  const highlightedItemIds = useMemo(
+    () => new Set(selectedRelease?.affectedItemIds ?? []),
+    [selectedRelease]
+  );
 
-  useEffect(() => {
-    if (!selectedSprintId) return;
-    if (!visibleSprints.some((s) => s.id === selectedSprintId)) {
-      setSelectedSprintId('');
-    }
-  }, [selectedSprintId, visibleSprints]);
+  const handleToggleHighlight = useCallback(
+    async (entityType, entityId) => {
+      if (!selectedReleaseId || !entityId) return;
+      const currentRelease = releases.find((r) => r.id === selectedReleaseId);
+      if (!currentRelease) return;
+
+      const folderIds = new Set(currentRelease.affectedFolderIds ?? []);
+      const itemIds = new Set(currentRelease.affectedItemIds ?? []);
+
+      if (entityType === 'folder') {
+        if (folderIds.has(entityId)) folderIds.delete(entityId);
+        else folderIds.add(entityId);
+      } else if (entityType === 'item') {
+        if (itemIds.has(entityId)) itemIds.delete(entityId);
+        else itemIds.add(entityId);
+      }
+
+      await updateRelease(selectedReleaseId, {
+        affectedFolderIds: [...folderIds],
+        affectedItemIds: [...itemIds]
+      });
+      refresh();
+    },
+    [refresh, releases, selectedReleaseId]
+  );
 
   useEffect(() => {
     if (!selection) {
@@ -279,17 +238,17 @@ function App() {
       return;
     }
     if (selection.type === 'folder') {
-      getFolder(selection.id, selectedReleaseId || null, selectedSprintId || null)
+      getFolder(selection.id, selectedReleaseId || null)
         .then(setFolderData)
         .catch(() => setFolderData(null));
       setItemData(null);
     } else if (selection.type === 'item') {
-      getItem(selection.id, selectedReleaseId || null, selectedSprintId || null)
+      getItem(selection.id, selectedReleaseId || null)
         .then(setItemData)
         .catch(() => setItemData(null));
       setFolderData(null);
     }
-  }, [selection, selectedReleaseId, selectedSprintId]);
+  }, [selection, selectedReleaseId]);
 
   const handleNodeSelect = useCallback((node) => {
     if (!node || !node.type) return;
@@ -348,7 +307,7 @@ function App() {
             </>
           )}
           {showReleaseForm && (
-            <div className="app-sprint-form-wrap">
+            <div className="app-release-form-wrap">
               <AddReleaseForm
                 releases={releases}
                 mode={editingReleaseId ? 'edit' : 'create'}
@@ -357,68 +316,6 @@ function App() {
                 onCancel={() => {
                   setShowReleaseForm(false);
                   setEditingReleaseId('');
-                }}
-              />
-            </div>
-          )}
-          <select
-            className="app-release-select"
-            value={selectedSprintId}
-            onChange={(e) => setSelectedSprintId(e.target.value)}
-          >
-            <option value="">No sprint</option>
-            {visibleSprints.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} {s.startDate ? `(${s.startDate})` : ''}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn-add-action"
-            onClick={() => {
-              setEditingSprintId('');
-              setShowSprintForm(!showSprintForm);
-            }}
-            title="Добавить спринт"
-          >
-            + Sprint
-          </button>
-          {selectedSprintId && (
-            <>
-              <button
-                type="button"
-                className="btn-add-action"
-                onClick={() => {
-                  setEditingSprintId(selectedSprintId);
-                  setShowSprintForm(true);
-                }}
-                title="Изменить спринт"
-              >
-                Edit Sprint
-              </button>
-              <button
-                type="button"
-                className="btn-add-action"
-                onClick={handleDeleteSprint}
-                title="Удалить спринт"
-              >
-                Delete Sprint
-              </button>
-            </>
-          )}
-          {showSprintForm && (
-            <div className="app-sprint-form-wrap">
-              <AddSprintForm
-                releases={releases}
-                sprints={sprints}
-                selectedReleaseId={selectedReleaseId || null}
-                mode={editingSprintId ? 'edit' : 'create'}
-                initialValues={editingSprintId ? selectedSprint : null}
-                onSubmit={handleAddSprint}
-                onCancel={() => {
-                  setShowSprintForm(false);
-                  setEditingSprintId('');
                 }}
               />
             </div>
@@ -493,13 +390,14 @@ function App() {
             itemData={itemData}
             allFolders={folders}
             selectedReleaseId={selectedReleaseId || null}
-            selectedSprintId={selectedSprintId || null}
             releases={releases}
-            sprints={sprints}
+            highlightedFolderIds={highlightedFolderIds}
+            highlightedItemIds={highlightedItemIds}
             onCommentAdded={refresh}
             onFolderUpdated={handleUpdateFolder}
             onFolderDeleted={handleDeleteFolder}
             onItemUpdated={handleUpdateItem}
+            onToggleHighlight={handleToggleHighlight}
           />
         </aside>
       </main>

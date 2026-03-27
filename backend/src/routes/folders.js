@@ -19,36 +19,19 @@ import {
   deleteItemComment,
   deleteFolder
 } from '../store/folders.js';
-import { getRelease, getDescendantReleaseIds } from '../store/releases.js';
-import { getSprint, getDescendantSprintIds, getSprintsByReleaseIds } from '../store/sprints.js';
+import { getRelease, getDescendantReleaseIds, updateRelease } from '../store/releases.js';
 
 const router = Router();
 
-function buildScopeContext(releaseId, sprintId) {
+function buildScopeContext(releaseId) {
   const releaseIds = new Set();
-  const sprintIds = new Set();
 
   if (releaseId) {
     const ids = getDescendantReleaseIds(releaseId);
     for (const id of ids) releaseIds.add(id);
   }
 
-  if (sprintId) {
-    const ids = getDescendantSprintIds(sprintId);
-    for (const id of ids) sprintIds.add(id);
-  }
-
-  if (releaseIds.size > 0) {
-    const releaseSprints = getSprintsByReleaseIds([...releaseIds]);
-    for (const sprint of releaseSprints) {
-      sprintIds.add(sprint.id);
-      for (const childId of getDescendantSprintIds(sprint.id)) {
-        sprintIds.add(childId);
-      }
-    }
-  }
-
-  return { releaseIds, sprintIds };
+  return { releaseIds };
 }
 
 function buildAggregateImpact(scopeContext) {
@@ -57,18 +40,10 @@ function buildAggregateImpact(scopeContext) {
     affectedItemIds: [],
     tags: []
   };
-  const sprint = {
-    affectedFolderIds: [],
-    affectedItemIds: [],
-    tags: []
-  };
 
   const releaseFolderSet = new Set();
   const releaseItemSet = new Set();
   const releaseTagSet = new Set();
-  const sprintFolderSet = new Set();
-  const sprintItemSet = new Set();
-  const sprintTagSet = new Set();
 
   for (const releaseId of scopeContext.releaseIds) {
     const node = getRelease(releaseId);
@@ -78,65 +53,73 @@ function buildAggregateImpact(scopeContext) {
     for (const tag of node.tags ?? []) releaseTagSet.add(tag);
   }
 
-  for (const sprintId of scopeContext.sprintIds) {
-    const node = getSprint(sprintId);
-    if (!node) continue;
-    for (const id of node.affectedFolderIds ?? []) sprintFolderSet.add(id);
-    for (const id of node.affectedItemIds ?? []) sprintItemSet.add(id);
-    for (const tag of node.tags ?? []) sprintTagSet.add(tag);
-  }
-
   release.affectedFolderIds = [...releaseFolderSet];
   release.affectedItemIds = [...releaseItemSet];
   release.tags = [...releaseTagSet];
-  sprint.affectedFolderIds = [...sprintFolderSet];
-  sprint.affectedItemIds = [...sprintItemSet];
-  sprint.tags = [...sprintTagSet];
-
-  return { release, sprint };
+  return { release };
 }
 
 function validateScope({ scopeType, scopeId }) {
   if (scopeType == null && scopeId == null) return null;
   if (!scopeType || !scopeId) return 'scopeType and scopeId must be provided together';
-  if (scopeType !== 'release' && scopeType !== 'sprint') return 'scopeType must be "release" or "sprint"';
+  if (scopeType !== 'release') return 'scopeType must be "release"';
   if (scopeType === 'release' && !getRelease(scopeId)) return 'release not found';
-  if (scopeType === 'sprint' && !getSprint(scopeId)) return 'sprint not found';
   return null;
+}
+
+function mergeUnique(existing = [], incoming = []) {
+  return [...new Set([...(existing ?? []), ...(incoming ?? [])])];
+}
+
+function markScopeImpact({ releaseId = null, folderIds = [], itemIds = [] }) {
+  if (releaseId) {
+    const release = getRelease(releaseId);
+    if (release) {
+      updateRelease(releaseId, {
+        affectedFolderIds: mergeUnique(release.affectedFolderIds, folderIds),
+        affectedItemIds: mergeUnique(release.affectedItemIds, itemIds)
+      });
+    }
+  }
 }
 
 router.get('/', (req, res) => {
   const releaseId = req.query.releaseId || null;
-  res.json({ folders: getFolders(releaseId), items: getItems() });
+  res.json({ folders: getFolders(releaseId), items: getItems(releaseId) });
 });
 
 router.get('/tree', (req, res) => {
   const releaseId = req.query.releaseId;
-  const sprintId = req.query.sprintId;
-  const scopeContext = buildScopeContext(releaseId, sprintId);
-  const { release, sprint } = buildAggregateImpact(scopeContext);
-  const tree = getFoldersTree(release, sprint, scopeContext, releaseId || null);
+  const scopeContext = buildScopeContext(releaseId);
+  const { release } = buildAggregateImpact(scopeContext);
+  const tree = getFoldersTree(release, scopeContext, releaseId || null);
   res.json(tree);
 });
 
 router.post('/folder', (req, res) => {
+  const releaseId = req.query.releaseId || null;
   const { name, parentId, tags } = req.body ?? {};
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
-  const folder = createFolder({ name: name.trim(), parentId: parentId || null, tags: tags ?? [] });
+  if (parentId && !getFolder(parentId, releaseId)) {
+    return res.status(400).json({ error: 'parent folder not found in current release scope' });
+  }
+  const folder = createFolder({ name: name.trim(), parentId: parentId || null, tags: tags ?? [], releaseId });
+  markScopeImpact({ releaseId, folderIds: [folder.id] });
   res.json({ folder });
 });
 
 router.post('/item', (req, res) => {
-  const { name, folderId, description, status, tags, parentId, tickets, bugs } = req.body ?? {};
+  const releaseId = req.query.releaseId || null;
+  const { name, folderId, description, status, tags, parentId, tickets, bugs, isStable } = req.body ?? {};
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
   if (!folderId) {
     return res.status(400).json({ error: 'folderId is required' });
   }
-  const folder = getFolder(folderId);
+  const folder = getFolder(folderId, releaseId);
   if (!folder) {
     return res.status(400).json({ error: 'folder not found' });
   }
@@ -148,8 +131,11 @@ router.post('/item', (req, res) => {
     tags: tags ?? [],
     parentId: parentId || null,
     tickets: tickets ?? [],
-    bugs: bugs ?? []
+    bugs: bugs ?? [],
+    releaseId,
+    isStable: Boolean(isStable)
   });
+  markScopeImpact({ releaseId, folderIds: [folderId], itemIds: [item.id] });
   res.json({ item });
 });
 
@@ -159,6 +145,7 @@ router.put('/folder/:id', (req, res) => {
   if (!folder) {
     return res.status(404).json({ error: 'folder not found' });
   }
+  markScopeImpact({ releaseId, folderIds: [req.params.id] });
   res.json({ folder });
 });
 
@@ -172,16 +159,18 @@ router.delete('/folder/:id', (req, res) => {
 });
 
 router.put('/item/:id', (req, res) => {
+  const releaseId = req.query.releaseId || null;
   const item = updateItem(req.params.id, req.body ?? {});
   if (!item) {
     return res.status(404).json({ error: 'item not found' });
   }
+  markScopeImpact({ releaseId, folderIds: item.folderId ? [item.folderId] : [], itemIds: [req.params.id] });
   res.json({ item });
 });
 
 router.get('/folder/:id', (req, res) => {
   const releaseId = req.query.releaseId || null;
-  const scopeContext = buildScopeContext(req.query.releaseId, req.query.sprintId);
+  const scopeContext = buildScopeContext(req.query.releaseId);
   const folder = getFolderScoped(req.params.id, scopeContext, releaseId);
   if (!folder) {
     return res.status(404).json({ error: 'folder not found' });
@@ -192,7 +181,7 @@ router.get('/folder/:id', (req, res) => {
 
 router.get('/item/:id', (req, res) => {
   const releaseId = req.query.releaseId || null;
-  const scopeContext = buildScopeContext(req.query.releaseId, req.query.sprintId);
+  const scopeContext = buildScopeContext(req.query.releaseId);
   const item = getItemScoped(req.params.id, scopeContext, releaseId);
   if (!item) {
     return res.status(404).json({ error: 'item not found' });
@@ -213,6 +202,10 @@ router.post('/folder/:id/comment', (req, res) => {
   if (!comment) {
     return res.status(404).json({ error: 'folder not found' });
   }
+  markScopeImpact({
+    releaseId: scopeType === 'release' ? scopeId : req.query.releaseId || null,
+    folderIds: [req.params.id]
+  });
   res.json({ comment });
 });
 
@@ -229,6 +222,12 @@ router.post('/item/:id/comment', (req, res) => {
   if (!comment) {
     return res.status(404).json({ error: 'item not found' });
   }
+  const item = getItemScoped(req.params.id, null, req.query.releaseId || null);
+  markScopeImpact({
+    releaseId: scopeType === 'release' ? scopeId : req.query.releaseId || null,
+    folderIds: item?.folderId ? [item.folderId] : [],
+    itemIds: [req.params.id]
+  });
   res.json({ comment });
 });
 

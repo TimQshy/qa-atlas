@@ -53,7 +53,8 @@ export function init() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       parent_id TEXT,
-      tags TEXT NOT NULL DEFAULT '[]'
+      tags TEXT NOT NULL DEFAULT '[]',
+      release_id TEXT
     );
 
     CREATE TABLE IF NOT EXISTS folder_comments (
@@ -75,7 +76,9 @@ export function init() {
       tags TEXT NOT NULL DEFAULT '[]',
       parent_id TEXT,
       tickets TEXT NOT NULL DEFAULT '[]',
-      bugs TEXT NOT NULL DEFAULT '[]'
+      bugs TEXT NOT NULL DEFAULT '[]',
+      release_id TEXT,
+      is_stable INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS item_comments (
@@ -88,24 +91,11 @@ export function init() {
       scope_id TEXT
     );
 
-    -- Releases & sprints
+    -- Releases
     CREATE TABLE IF NOT EXISTS releases (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       date TEXT NOT NULL,
-      parent_id TEXT,
-      affected_folder_ids TEXT NOT NULL DEFAULT '[]',
-      affected_item_ids TEXT NOT NULL DEFAULT '[]',
-      tags TEXT NOT NULL DEFAULT '[]'
-    );
-
-    CREATE TABLE IF NOT EXISTS sprints (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      start_date TEXT NOT NULL,
-      end_date TEXT,
-      goal TEXT NOT NULL DEFAULT '',
-      release_id TEXT,
       parent_id TEXT,
       affected_folder_ids TEXT NOT NULL DEFAULT '[]',
       affected_item_ids TEXT NOT NULL DEFAULT '[]',
@@ -126,6 +116,13 @@ export function init() {
     INSERT OR IGNORE INTO product_settings (id, product_name) VALUES (1, 'My Product');
   `);
 
+  // Sprint feature removed permanently
+  db.exec(`DROP TABLE IF EXISTS sprints;`);
+
+  ensureColumn('folders', 'release_id', 'TEXT');
+  ensureColumn('items', 'release_id', 'TEXT');
+  ensureColumn('items', 'is_stable', 'INTEGER NOT NULL DEFAULT 0');
+
   migrateFromJson();
   return db;
 }
@@ -134,7 +131,6 @@ function migrateFromJson() {
   const productFile = path.join(DATA_DIR, 'product.json');
   const foldersFile = path.join(DATA_DIR, 'folders.json');
   const releasesFile = path.join(DATA_DIR, 'releases.json');
-  const sprintsFile = path.join(DATA_DIR, 'sprints.json');
 
   const productCount = db.prepare('SELECT COUNT(*) as c FROM modules').get();
   if (productCount.c > 0) return;
@@ -217,27 +213,16 @@ function migrateFromJson() {
     console.log('Migrated releases.json to SQLite');
   }
 
-  const sprintCount = db.prepare('SELECT COUNT(*) as c FROM sprints').get();
-  if (sprintCount.c === 0 && fs.existsSync(sprintsFile)) {
-    const data = JSON.parse(fs.readFileSync(sprintsFile, 'utf-8'));
-    const ins = db.prepare(
-      'INSERT OR IGNORE INTO sprints (id, name, start_date, end_date, goal, release_id, parent_id, affected_folder_ids, affected_item_ids, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    for (const s of data.sprints || []) {
-      ins.run(
-        s.id,
-        s.name,
-        s.startDate || new Date().toISOString().slice(0, 10),
-        s.endDate || null,
-        s.goal || '',
-        s.releaseId || null,
-        s.parentId || null,
-        JSON.stringify(s.affectedFolderIds || []),
-        JSON.stringify(s.affectedItemIds || []),
-        JSON.stringify(s.tags || [])
-      );
-    }
-    console.log('Migrated sprints.json to SQLite');
+}
+
+function hasColumn(tableName, columnName) {
+  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  return rows.some((row) => row.name === columnName);
+}
+
+function ensureColumn(tableName, columnName, definition) {
+  if (!hasColumn(tableName, columnName)) {
+    db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
   }
 }
 

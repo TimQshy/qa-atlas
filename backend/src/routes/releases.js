@@ -1,5 +1,12 @@
 import { Router } from 'express';
-import { getReleases, getRelease, createRelease, updateRelease } from '../store/releases.js';
+import {
+  getReleases,
+  getRelease,
+  createRelease,
+  createReleaseFrom,
+  updateRelease,
+  deleteRelease
+} from '../store/releases.js';
 
 const router = Router();
 
@@ -16,7 +23,24 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, date, parentId, affectedFolderIds, affectedItemIds, tags } = req.body ?? {};
+  const { name, date, parentId, affectedFolderIds, affectedItemIds, tags, duplicateFromReleaseId, copyOnlyStableItems } = req.body ?? {};
+
+  if (duplicateFromReleaseId) {
+    const release = createReleaseFrom(duplicateFromReleaseId, {
+      name: typeof name === 'string' && name.trim() ? name.trim() : undefined,
+      date: date || undefined,
+      parentId: parentId !== undefined ? parentId || null : undefined,
+      affectedFolderIds: Array.isArray(affectedFolderIds) ? affectedFolderIds : undefined,
+      affectedItemIds: Array.isArray(affectedItemIds) ? affectedItemIds : undefined,
+      tags: Array.isArray(tags) ? tags : undefined,
+      copyOnlyStableItems: copyOnlyStableItems !== undefined ? Boolean(copyOnlyStableItems) : undefined
+    });
+    if (!release) {
+      return res.status(400).json({ error: 'duplicate source release not found' });
+    }
+    return res.json(release);
+  }
+
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
@@ -45,6 +69,14 @@ router.put('/:id', (req, res) => {
     return res.status(404).json({ error: 'release not found' });
   }
   res.json(release);
+});
+
+router.delete('/:id', (req, res) => {
+  const deleted = deleteRelease(req.params.id);
+  if (!deleted) {
+    return res.status(404).json({ error: 'release not found' });
+  }
+  res.status(204).send();
 });
 
 export default router;

@@ -9,7 +9,7 @@ import {
 } from '../api/atlas';
 import './DescriptionPanel.css';
 
-function buildScopeOptions(selectedReleaseId, selectedSprintId, releases, sprints) {
+function buildScopeOptions(selectedReleaseId, releases) {
   const options = [
     {
       key: 'global',
@@ -27,35 +27,18 @@ function buildScopeOptions(selectedReleaseId, selectedSprintId, releases, sprint
       label: `Release: ${release?.name ?? selectedReleaseId}`
     });
   }
-  if (selectedSprintId) {
-    const sprint = sprints.find((s) => s.id === selectedSprintId);
-    options.push({
-      key: `sprint:${selectedSprintId}`,
-      scopeType: 'sprint',
-      scopeId: selectedSprintId,
-      label: `Sprint: ${sprint?.name ?? selectedSprintId}`
-    });
-  }
   return options;
 }
 
-function resolveScopeLabel(comment, releases, sprints) {
+function resolveScopeLabel(comment, releases) {
   if (comment.scopeType === 'release') {
     const release = releases.find((r) => r.id === comment.scopeId);
     return `Release: ${release?.name ?? comment.scopeId}`;
   }
-  if (comment.scopeType === 'sprint') {
-    const sprint = sprints.find((s) => s.id === comment.scopeId);
-    return `Sprint: ${sprint?.name ?? comment.scopeId}`;
-  }
   return 'Общий';
 }
 
-function getDefaultScopeKey(scopeOptions, selectedReleaseId, selectedSprintId) {
-  if (selectedSprintId) {
-    const sprintKey = `sprint:${selectedSprintId}`;
-    if (scopeOptions.some((opt) => opt.key === sprintKey)) return sprintKey;
-  }
+function getDefaultScopeKey(scopeOptions, selectedReleaseId) {
   if (selectedReleaseId) {
     const releaseKey = `release:${selectedReleaseId}`;
     if (scopeOptions.some((opt) => opt.key === releaseKey)) return releaseKey;
@@ -68,9 +51,7 @@ function CommentSection({
   entityType,
   entityId,
   selectedReleaseId,
-  selectedSprintId,
   releases,
-  sprints,
   onCommentAdded
 }) {
   const [text, setText] = useState('');
@@ -80,11 +61,11 @@ function CommentSection({
   const [savingEdit, setSavingEdit] = useState(false);
 
   const scopeOptions = useMemo(
-    () => buildScopeOptions(selectedReleaseId, selectedSprintId, releases, sprints),
-    [selectedReleaseId, selectedSprintId, releases, sprints]
+    () => buildScopeOptions(selectedReleaseId, releases),
+    [selectedReleaseId, releases]
   );
   const [selectedScopeKey, setSelectedScopeKey] = useState(
-    getDefaultScopeKey(scopeOptions, selectedReleaseId, selectedSprintId)
+    getDefaultScopeKey(scopeOptions, selectedReleaseId)
   );
 
   const selectedScope = scopeOptions.find((opt) => opt.key === selectedScopeKey) ?? scopeOptions[0] ?? null;
@@ -94,7 +75,7 @@ function CommentSection({
       setSelectedScopeKey('');
       return;
     }
-    const preferredKey = getDefaultScopeKey(scopeOptions, selectedReleaseId, selectedSprintId);
+    const preferredKey = getDefaultScopeKey(scopeOptions, selectedReleaseId);
     if (!scopeOptions.some((opt) => opt.key === selectedScopeKey)) {
       setSelectedScopeKey(preferredKey);
       return;
@@ -102,7 +83,7 @@ function CommentSection({
     if (selectedScopeKey === 'global' && preferredKey !== 'global') {
       setSelectedScopeKey(preferredKey);
     }
-  }, [scopeOptions, selectedScopeKey, selectedReleaseId, selectedSprintId]);
+  }, [scopeOptions, selectedScopeKey, selectedReleaseId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -114,8 +95,7 @@ function CommentSection({
         text: trimmed,
         scopeType: selectedScope.scopeType,
         scopeId: selectedScope.scopeId,
-        releaseId: selectedReleaseId || null,
-        sprintId: selectedSprintId || null
+        releaseId: selectedReleaseId || null
       };
       if (entityType === 'folder') {
         await addCommentToFolder(entityId, payload);
@@ -206,7 +186,7 @@ function CommentSection({
                       {c.createdAt ? new Date(c.createdAt).toLocaleString() : ''}
                     </span>
                     <span className="description-panel-comment-scope">
-                      {resolveScopeLabel(c, releases, sprints)}
+                      {resolveScopeLabel(c, releases)}
                     </span>
                     <button type="button" className="btn-comment-secondary" onClick={() => startEdit(c)}>
                       Изменить
@@ -484,19 +464,37 @@ function ItemEditorSection({ item, selectedReleaseId, onItemUpdated }) {
   );
 }
 
+function HighlightToggleSection({ entityType, entityId, selectedReleaseId, isHighlighted, onToggleHighlight }) {
+  if (!selectedReleaseId) return null;
+  return (
+    <section className="description-panel-section">
+      <div className="description-panel-folder-actions">
+        <button
+          type="button"
+          className="btn-comment-secondary"
+          onClick={() => onToggleHighlight?.(entityType, entityId)}
+        >
+          {isHighlighted ? 'Highlight: ON (выключить)' : 'Highlight: OFF (включить)'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export default function DescriptionPanel({
   selection,
   folderData,
   itemData,
   allFolders,
   selectedReleaseId,
-  selectedSprintId,
   releases,
-  sprints,
+  highlightedFolderIds,
+  highlightedItemIds,
   onCommentAdded,
   onFolderUpdated,
   onFolderDeleted,
-  onItemUpdated
+  onItemUpdated,
+  onToggleHighlight
 }) {
   if (!selection) {
     return (
@@ -514,6 +512,7 @@ export default function DescriptionPanel({
     const items = folderData?.items ?? [];
     const tags = folder.tags ?? [];
     const comments = folder.comments ?? [];
+    const isHighlighted = highlightedFolderIds?.has(folder.id) ?? false;
 
     return (
       <div className="description-panel">
@@ -552,15 +551,20 @@ export default function DescriptionPanel({
           onFolderUpdated={onFolderUpdated}
           onFolderDeleted={onFolderDeleted}
         />
+        <HighlightToggleSection
+          entityType="folder"
+          entityId={folder.id}
+          selectedReleaseId={selectedReleaseId}
+          isHighlighted={isHighlighted}
+          onToggleHighlight={onToggleHighlight}
+        />
 
         <CommentSection
           comments={comments}
           entityType="folder"
           entityId={id}
           selectedReleaseId={selectedReleaseId}
-          selectedSprintId={selectedSprintId}
           releases={releases}
-          sprints={sprints}
           onCommentAdded={onCommentAdded}
         />
       </div>
@@ -573,6 +577,7 @@ export default function DescriptionPanel({
     const tickets = item.tickets ?? [];
     const bugs = item.bugs ?? [];
     const comments = item.comments ?? [];
+    const isHighlighted = highlightedItemIds?.has(item.id) ?? false;
 
     return (
       <div className="description-panel">
@@ -626,15 +631,20 @@ export default function DescriptionPanel({
         )}
 
         <ItemEditorSection item={item} selectedReleaseId={selectedReleaseId} onItemUpdated={onItemUpdated} />
+        <HighlightToggleSection
+          entityType="item"
+          entityId={item.id}
+          selectedReleaseId={selectedReleaseId}
+          isHighlighted={isHighlighted}
+          onToggleHighlight={onToggleHighlight}
+        />
 
         <CommentSection
           comments={comments}
           entityType="item"
           entityId={id}
           selectedReleaseId={selectedReleaseId}
-          selectedSprintId={selectedSprintId}
           releases={releases}
-          sprints={sprints}
           onCommentAdded={onCommentAdded}
         />
       </div>

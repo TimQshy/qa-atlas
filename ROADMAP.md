@@ -2,6 +2,8 @@
 
 **Interactive AI-Driven Product Map | Living QA Knowledge Base**
 
+Beginner step-by-step guide: [docs/MVP_ROADMAP_BEGINNER.md](docs/MVP_ROADMAP_BEGINNER.md)
+
 ---
 
 ## Research Summary (Tech Choices)

@@ -5,7 +5,6 @@ import productRoutes from './routes/product.js';
 import mutationRoutes from './routes/mutations.js';
 import folderRoutes from './routes/folders.js';
 import releaseRoutes from './routes/releases.js';
-import sprintRoutes from './routes/sprints.js';
 
 init();
 
@@ -17,7 +16,6 @@ app.use('/api/product', productRoutes);
 app.use('/api', mutationRoutes);
 app.use('/api/folders', folderRoutes);
 app.use('/api/releases', releaseRoutes);
-app.use('/api/sprints', sprintRoutes);
 
 const PORT = 4000;
 app.listen(PORT, () => {

@@ -1,0 +1,2 @@
+# SQLite database (created from JSON migration on first run)
+backend/data/*.db

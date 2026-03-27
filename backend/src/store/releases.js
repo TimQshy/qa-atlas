@@ -1,5 +1,6 @@
 import { getDb } from '../db/database.js';
 import { v4 as uuid } from 'uuid';
+import { cloneReleaseScopedData } from './folders.js';
 
 function rowToRelease(row) {
   return {
@@ -72,6 +73,25 @@ export function createRelease({ name, date, parentId = null, affectedFolderIds =
   return getRelease(id);
 }
 
+export function createReleaseFrom(sourceId, patch = {}) {
+  const source = getRelease(sourceId);
+  if (!source) return null;
+  const release = createRelease({
+    name: patch.name ?? `${source.name} (copy)`,
+    date: patch.date ?? source.date,
+    parentId: patch.parentId !== undefined ? patch.parentId : source.parentId,
+    affectedFolderIds: patch.affectedFolderIds ?? [],
+    affectedItemIds: patch.affectedItemIds ?? [],
+    tags: patch.tags ?? []
+  });
+  if (!release) return null;
+  cloneReleaseScopedData(sourceId, release.id, {
+    copyOnlyStableItems: patch.copyOnlyStableItems !== undefined ? Boolean(patch.copyOnlyStableItems) : true,
+    copyComments: false
+  });
+  return release;
+}
+
 export function updateRelease(id, patch) {
   const release = getRelease(id);
   if (!release) return null;
@@ -86,4 +106,20 @@ export function updateRelease(id, patch) {
     'UPDATE releases SET name = ?, date = ?, parent_id = ?, affected_folder_ids = ?, affected_item_ids = ?, tags = ? WHERE id = ?'
   ).run(name, date, parentId, JSON.stringify(affectedFolderIds), JSON.stringify(affectedItemIds), JSON.stringify(tags), id);
   return getRelease(id);
+}
+
+export function deleteRelease(id) {
+  const db = getDb();
+  const root = getRelease(id);
+  if (!root) return false;
+
+  const releaseIds = getDescendantReleaseIds(id);
+
+  if (releaseIds.length > 0) {
+    const placeholders = releaseIds.map(() => '?').join(', ');
+    db.prepare(`DELETE FROM release_folder_overrides WHERE release_id IN (${placeholders})`).run(...releaseIds);
+    db.prepare(`DELETE FROM releases WHERE id IN (${placeholders})`).run(...releaseIds);
+  }
+
+  return true;
 }
