@@ -1,0 +1,783 @@
+{
+  "meta": {
+    "schemaVersion": 1,
+    "exportedAt": "2026-05-11T09:25:43.928Z"
+  },
+  "folders": [
+    {
+      "id": "folder-admin",
+      "name": "Admin",
+      "parent_id": null,
+      "tags": [
+        "ADMIN",
+        "P3",
+        "ET"
+      ],
+      "sort_order": 0
+    },
+    {
+      "id": "folder-analytics",
+      "name": "Analytics",
+      "parent_id": null,
+      "tags": [
+        "ANALYTICS",
+        "P2",
+        "ET"
+      ],
+      "sort_order": 0
+    },
+    {
+      "id": "folder-apply",
+      "name": "Apply",
+      "parent_id": null,
+      "tags": [
+        "APPLY",
+        "P1",
+        "ET"
+      ],
+      "sort_order": 0
+    },
+    {
+      "id": "folder-events",
+      "name": "New Event Forrms",
+      "parent_id": "cd6b3671-9053-4740-be0b-afd6699c8d93",
+      "tags": [
+        "EVENTS",
+        "ET"
+      ],
+      "sort_order": 0
+    },
+    {
+      "id": "folder-map",
+      "name": "Map Layers",
+      "parent_id": null,
+      "tags": [
+        "ET",
+        "MAP",
+        "P1"
+      ],
+      "sort_order": 0
+    },
+    {
+      "id": "folder-tasks",
+      "name": "Tasks",
+      "parent_id": null,
+      "tags": [
+        "TASKS",
+        "P2",
+        "ET"
+      ],
+      "sort_order": 0
+    },
+    {
+      "id": "b0641dde-cc9d-49bb-9cf3-0fed2d799ba6",
+      "name": "Unsorted",
+      "parent_id": null,
+      "tags": [
+        "UNMAPPED",
+        "ET"
+      ],
+      "sort_order": 0
+    },
+    {
+      "id": "cd6b3671-9053-4740-be0b-afd6699c8d93",
+      "name": "Events",
+      "parent_id": null,
+      "tags": [
+        "ET"
+      ],
+      "sort_order": 0
+    },
+    {
+      "id": "83ca119d-3876-4ff3-998a-f8caa7e741fa",
+      "name": "Leader кимчанын",
+      "parent_id": "folder-events",
+      "tags": [],
+      "sort_order": 0
+    }
+  ],
+  "items": [
+    {
+      "id": "89d19fec-a477-4ea2-af4a-4b7fc2c09fa3",
+      "title": "ET-9343 Signup forms auto-assign gender based on relationship when field is not on form",
+      "folder_id": "folder-apply",
+      "description": "### Jira DONE summary\n- ET-9343: tested signup form default gender assignment when field is absent; why: verify signup form behavior for relationship-based defaults and prevent regression (source: https://enquirytracker.atlassian.net/browse/ET-9343)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9343"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "e53c4492-17f7-4238-8e75-715c2872184e",
+      "title": "ET-9334 Fix Analytics geographic address error",
+      "folder_id": "folder-analytics",
+      "description": "### Jira DONE summary\n- ET-9334: tested analytics geographic address display; why: confirm analytics address rendering fix for user-visible map accuracy (source: https://enquirytracker.atlassian.net/browse/ET-9334)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9334"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "79b37a88-16a0-4bda-92d0-d8a27c0cba21",
+      "title": "ET-8751 Implement event form-specific message flows",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-8751: tested event form-specific message flows; why: validate event message flow behavior introduced in release 26.2.0 (source: https://enquirytracker.atlassian.net/browse/ET-8751)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-8751"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "86118425-e4de-4b6f-9827-83bc5de15113",
+      "title": "ET-9437 Set formTemplateId for event-specific email templates",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-9437: tested formTemplateId assignment for event email templates; why: verify event email templates are linked to correct formTemplateId (source: https://enquirytracker.atlassian.net/browse/ET-9437)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9437"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "194a843e-bdfb-4199-a752-9ecf8bf8c06d",
+      "title": "ET-9088 Hide Admin > Messages > Event Registration Form Messages",
+      "folder_id": "folder-admin",
+      "description": "### Jira DONE summary\n- ET-9088: tested Admin > Messages visibility for Event Registration Form Messages; why: confirm event registration message UI visibility matches expected behavior (source: https://enquirytracker.atlassian.net/browse/ET-9088)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9088"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "50736fd6-9416-414c-b564-1d6358e4836f",
+      "title": "ET-9417 Improve signing wizard primary contact type validation",
+      "folder_id": "folder-apply",
+      "description": "### Jira DONE summary\n- ET-9417: tested signing wizard: improve primary contact type validation in check your details step; why: validate release 26.2.0 behavior and avoid regression (source: https://enquirytracker.atlassian.net/browse/ET-9417)",
+      "tags": [
+        "26.2.0",
+        "ET"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9417"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "5175665d-d189-4489-88b7-77bf5d279a74",
+      "title": "ET-9094 Add Event Form dropdown on Event Details page",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-9094: tested event form dropdown in Event Details page; why: verify event details configuration supports selecting event form correctly (source: https://enquirytracker.atlassian.net/browse/ET-9094)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9094"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "96719d92-2b91-41b8-8824-81175d6fad79",
+      "title": "ET-8520 Add formTemplateId to Event and Message templates",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-8520: tested formTemplateId linkage on event and message templates; why: validate template linkage fields required for event and messaging workflows (source: https://enquirytracker.atlassian.net/browse/ET-8520)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-8520"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "111a4cf4-d2b0-4f4e-8cd7-0f30a3b9ff30",
+      "title": "ET-9363 Fix Apply form editor resetting form name after field edits",
+      "folder_id": "folder-apply",
+      "description": "### Jira DONE summary\n- ET-9363: tested apply > form editor > making any change to any field resets form name to original value; why: validate release 26.2.0 behavior and avoid regression (source: https://enquirytracker.atlassian.net/browse/ET-9363)",
+      "tags": [
+        "26.2.0",
+        "ET"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9363"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "f2f976bf-094e-4eea-9243-cf99d32602ea",
+      "title": "ET-9395 Fix role error when TasksReminders feature flag is disabled",
+      "folder_id": "folder-tasks",
+      "description": "### Jira DONE summary\n- ET-9395: tested \"this action is not allowed for this role\" error on every page when tasksreminders feature flag is disabled; why: validate release 26.2.0 behavior and avoid regression (source: https://enquirytracker.atlassian.net/browse/ET-9395)",
+      "tags": [
+        "26.2.0",
+        "ET"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9395"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "98479cd5-4675-43f9-8d5e-162c1b48e270",
+      "title": "ET-9113 Support new Event Forms without Apply module enabled",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-9113: tested new event forms flow without Apply module; why: verify event forms work correctly in environments without Apply module (source: https://enquirytracker.atlassian.net/browse/ET-9113)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9113"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "d7c60557-1c17-4254-8bfe-4263c7ee16ae",
+      "title": "ET-9035 Create default message templates for new Event Forms",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-9035: tested default message template creation for new event forms; why: validate default templates are generated for new event forms (source: https://enquirytracker.atlassian.net/browse/ET-9035)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9035"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "7efeedac-412c-49a8-af53-8171f9b6b0ff",
+      "title": "ET-9397 New Event Forms: Update 'Copy event link' to use new event form URL format",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-9397: tested event form copy-link behavior with new URL format; why: ensure links shared from event forms resolve correctly in release 26.2.0 (source: https://enquirytracker.atlassian.net/browse/ET-9397)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9397"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "e0204665-af1f-4b33-9179-73674c3e8452",
+      "title": "ET-9412 Add column Event Form in event-list",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-9412: tested event list Event Form column; why: confirm event list shows event form association for release 26.2.0 (source: https://enquirytracker.atlassian.net/browse/ET-9412)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9412"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "74c41bf9-e402-4cdf-b5e8-44e2fbde8f88",
+      "title": "ET-9466 ICS calendar attachments CANCEL and REQUEST notifications",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-9466: tested ICS calendar attachment METHOD:CANCEL and METHOD:REQUEST; why: verify calendar notification behavior for event changes and deletions (source: https://enquirytracker.atlassian.net/browse/ET-9466)",
+      "tags": [
+        "ET",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9466"
+        }
+      ],
+      "bugs": [],
+      "is_stable": true
+    },
+    {
+      "id": "827f48f6-5e01-444b-bc3d-cb9b3fb849dc",
+      "title": "ET-9460 Why is SMS Verification disabled for The Gap State School, QLD",
+      "folder_id": "b0641dde-cc9d-49bb-9cf3-0fed2d799ba6",
+      "description": "### Jira DONE summary\n- ET-9460: tested Why is SMS Verification disabled for The Gap State School, QLD; why: ticket is done but was not confidently mapped to a module (source: https://enquirytracker.atlassian.net/browse/ET-9460)",
+      "tags": [
+        "ET",
+        "UNMAPPED"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9460"
+        }
+      ],
+      "bugs": [],
+      "is_stable": false
+    },
+    {
+      "id": "a147e5b2-caf8-40e0-a078-bab790f664ca",
+      "title": "ET-9440 E2E Redesign: API Client + Data Factory + Selectors",
+      "folder_id": "b0641dde-cc9d-49bb-9cf3-0fed2d799ba6",
+      "description": "### Jira DONE summary\n- ET-9440: tested E2E Redesign: API Client + Data Factory + Selectors; why: ticket is done but was not confidently mapped to a module (source: https://enquirytracker.atlassian.net/browse/ET-9440)",
+      "tags": [
+        "ET",
+        "UNMAPPED"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9440"
+        }
+      ],
+      "bugs": [],
+      "is_stable": false
+    },
+    {
+      "id": "80cc5c0e-084a-455f-a0c5-006c830564e4",
+      "title": "ET-9448 Fix student summary Year Level Field",
+      "folder_id": "folder-events",
+      "description": "### QA note\nНе могу засабмитить event form (cannot submit event form).\n\n### Jira DONE summary\n- ET-9448: tested event form submission path; why: confirm blocker before release — Jira Bug in QA, student Year Level field (source: https://enquirytracker.atlassian.net/browse/ET-9448)",
+      "tags": [
+        "ET",
+        "PRE-RELEASE",
+        "26.2.0"
+      ],
+      "priority": "medium",
+      "status": "In Progress",
+      "tickets": [
+        {
+          "key": "ET-9448"
+        }
+      ],
+      "bugs": [],
+      "is_stable": false
+    },
+    {
+      "id": "5a6efd07-ac72-40f5-bfa5-67f9f7ff4e92",
+      "title": "ET-4950: APP LISTS> Update default values for School Education",
+      "folder_id": "folder-admin",
+      "description": "### Jira DONE summary\n- ET-4950: tested app lists> update default values for school education; why: validate release 26.2.0 behavior and avoid regression (source: https://enquirytracker.atlassian.net/browse/ET-4950)",
+      "tags": [
+        "ET",
+        "PRE-RELEASE"
+      ],
+      "priority": "medium",
+      "status": "To Do",
+      "tickets": [
+        {
+          "key": "ET-4950"
+        }
+      ],
+      "bugs": [],
+      "is_stable": false
+    },
+    {
+      "id": "507915b8-fa65-42e1-b420-69a49bd2b319",
+      "title": "ET-4951: APP LISTS> Update default values for Higher level Education",
+      "folder_id": "folder-admin",
+      "description": "### Jira DONE summary\n- ET-4951: tested app lists> update default values for higher level education; why: validate release 26.2.0 behavior and avoid regression (source: https://enquirytracker.atlassian.net/browse/ET-4951)",
+      "tags": [
+        "ET",
+        "PRE-RELEASE"
+      ],
+      "priority": "medium",
+      "status": "To Do",
+      "tickets": [
+        {
+          "key": "ET-4951"
+        }
+      ],
+      "bugs": [],
+      "is_stable": false
+    },
+    {
+      "id": "598b6975-8f1f-4098-879d-5ff3d0547986",
+      "title": "ET-9168: Bug: MultiGeometry KML files upload as map layer but fail catchment creation",
+      "folder_id": "folder-map",
+      "description": "### Jira DONE summary\n- ET-9168: tested bug: multigeometry kml files upload as map layer but fail catchment creation; why: validate release 26.2.0 behavior and avoid regression (source: https://enquirytracker.atlassian.net/browse/ET-9168)",
+      "tags": [
+        "ET",
+        "PRE-RELEASE"
+      ],
+      "priority": "medium",
+      "status": "To Do",
+      "tickets": [
+        {
+          "key": "ET-9168"
+        }
+      ],
+      "bugs": [],
+      "is_stable": false
+    },
+    {
+      "id": "e380d5a5-53f8-4518-86d3-b0b222d5b395",
+      "title": "ET-9273: STAGING: Public application form fails with \"User does not exist\" on START",
+      "folder_id": "folder-admin",
+      "description": "### Jira DONE summary\n- ET-9273: tested staging: public application form fails with \"user does not exist\" on start; why: validate release 26.2.0 behavior and avoid regression (source: https://enquirytracker.atlassian.net/browse/ET-9273)",
+      "tags": [
+        "ET"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9273"
+        }
+      ],
+      "bugs": [],
+      "is_stable": false
+    },
+    {
+      "id": "88bd066d-3e90-47af-a888-55b8a89a75c4",
+      "title": "ET-9411: Event Fillable Form Steppers Are Not Allowing Form To Be Submitted",
+      "folder_id": "folder-events",
+      "description": "### Jira DONE summary\n- ET-9411: tested event fillable form steppers are not allowing form to be submitted; why: validate release 26.2.0 behavior and avoid regression (source: https://enquirytracker.atlassian.net/browse/ET-9411)",
+      "tags": [
+        "ET"
+      ],
+      "priority": "medium",
+      "status": "Done",
+      "tickets": [
+        {
+          "key": "ET-9411"
+        }
+      ],
+      "bugs": [],
+      "is_stable": false
+    },
+    {
+      "id": "30f9788a-e31e-4ec1-954f-bd4b5b363536",
+      "title": "Duplicate Event Form Template",
+      "folder_id": "folder-events",
+      "description": "TC #",
+      "tags": [],
+      "priority": "medium",
+      "status": "QA",
+      "tickets": [],
+      "bugs": [],
+      "is_stable": false
+    }
+  ],
+  "releases": [
+    {
+      "id": "8c150a5b-0b72-4a5c-a9a5-3a3eb068ed7b",
+      "name": "Release 26.2.0",
+      "date": "2026-03-31",
+      "affected_folder_ids": [
+        "4f6b9ecd-3be4-4748-b8bd-2aa70ea60cb7",
+        "b0641dde-cc9d-49bb-9cf3-0fed2d799ba6",
+        "cd6b3671-9053-4740-be0b-afd6699c8d93",
+        "d9777ab9-669f-452b-ac1c-98a39f0ae1d0",
+        "folder-admin",
+        "folder-analytics",
+        "folder-apply",
+        "folder-map",
+        "folder-tasks",
+        "folder-comms",
+        "83ca119d-3876-4ff3-998a-f8caa7e741fa",
+        "folder-events",
+        "folder-leadscore",
+        "folder-students",
+        "folder-merge",
+        "folder-enquiries",
+        "folder-impexp"
+      ],
+      "affected_item_ids": [
+        "item-et-8580",
+        "item-comms-01",
+        "item-et-8933",
+        "acafd5ac-00a8-456b-bcfe-3df10a4ddfca",
+        "6ee4f25d-5129-453b-bb11-31221579279e",
+        "c8671dea-7f66-43b1-a4c7-a2159cbf8aa5",
+        "87a30e38-2498-4da2-bf56-e8fbec95f4e0",
+        "34fcf467-511c-4432-a1c2-88e7d1d1a6a7",
+        "bf9a154a-f5ef-4d0f-a145-b0f13b0cf236",
+        "1cf48641-e77c-490b-ba97-b943c463464a",
+        "cb9c7d07-38ff-477a-b36c-d1bf762334b5",
+        "389467d7-53bd-408e-b621-0b7c8e8f0412",
+        "d06277a9-f050-498b-acc5-1f323c2c1743",
+        "5e7f3219-9e16-465f-8f1e-47c23978fd44",
+        "e4ab8b8d-1b25-492b-9eda-df4d4f364ca6",
+        "e81143bf-af0c-4526-ab7e-482b108d5071",
+        "540e0996-a8ba-4508-905c-193e39e8a812",
+        "e5c9eb41-44fe-488f-b2a9-fd7e74259fb8",
+        "b03e59eb-3675-4874-8216-6be3d5676922",
+        "63082396-0164-40cb-9455-a47d9f16507c",
+        "ff14e937-72e3-4a6d-8c77-dbc263e525c8",
+        "1b3568a0-e26e-4ba1-a39b-f2fd05bf6a56",
+        "962ee9b0-9031-4bfc-ac42-b4436f06e0ab",
+        "413eff0a-63e5-4d9c-a227-d51a729d2bc3",
+        "8d3d6f2b-ba42-4fe1-83a6-f3e38415cdf7",
+        "36af3f0d-6066-4d49-89b1-c45dd3e1bd61",
+        "a2a9c0f5-d99a-41f5-9280-45881079b6ec",
+        "cfbbc772-ca69-445e-9323-6caf8dbd776d",
+        "1a9e52a0-b9eb-4d3f-a3a3-5f487c3f37f4",
+        "323b8762-d438-4730-a953-f711d7d0cb6b",
+        "786b29da-8e5e-463a-97b1-184ac2d618f5",
+        "ee8d33a7-c7ea-4ec7-bbfd-5d580349dee3",
+        "8854eac0-0c54-4d04-a1d0-c2db86be196a",
+        "8dbd440b-43fa-46e9-a45b-dae811be10c5",
+        "c6427504-b87e-4004-bc15-ef77a2d5f73b",
+        "ce56d032-2773-432b-9643-47813edf20c7",
+        "9c4b7959-455f-4508-8cbf-75d26836c566",
+        "41e3d853-71b2-419d-b547-a3f50af1ff88",
+        "9082e43f-6551-46bf-8c15-7dc1b1a8eb90",
+        "9bae6e52-1cab-41fc-8e39-ef84f37a60c0",
+        "703333f4-5e0a-42ef-b826-3dccfee23cbc",
+        "bbe6a71e-4e37-4025-a9cb-5e1082961e45",
+        "0fdfe42e-bb74-4e3e-91f7-4249ce944a2f",
+        "eb8e4954-0496-4d59-8598-520bd22edffc",
+        "08045063-dbd8-4a3b-94ac-5d7d444b7596",
+        "6c857e10-cf87-4abe-bddc-d9fc61f86311",
+        "229eaec3-e30a-49f8-be44-78aee8763137",
+        "fd46b3b4-760f-4083-9377-5c1a8ef2fae4",
+        "fadd2068-f335-4c00-ba45-398eda9b934f",
+        "19c0c4e6-e7f7-4dae-884e-bdf93eb17220",
+        "159fc2ed-6703-432d-b53a-a9c74520a99a",
+        "7d46c248-d971-4727-b6c8-1c2a753c7dc8",
+        "32c4fef0-6d2a-4a2c-9164-9867d2f39f94",
+        "594ecbfb-81be-4165-b609-5d70073edf67",
+        "7a84beaf-d437-4317-9eb9-6ad526cfe112",
+        "80bccffd-6c1f-4e53-a5d3-9522ee13d4f2",
+        "0c087019-26ce-4648-8f0f-886e64e56f1f",
+        "5c38e6bf-1a0e-4d19-86bf-3b626fda5349",
+        "c19b4552-1242-416c-bea2-169494f6bfcd",
+        "7c1bdc06-c8f6-4f1b-b127-1e87ea625d8d",
+        "42738478-362e-4c74-b76b-b51bc1acab20",
+        "95528b40-19e6-4075-a682-961c75d6c408",
+        "085efc70-bf42-4f2c-87b5-8c9a82158e1d",
+        "47aea9eb-6580-4755-a3dd-e13197643597",
+        "e2602850-0de6-46f5-bdfb-5314089f5883",
+        "6b089b30-59d7-4ea7-aa7f-68a9b0c26682",
+        "3cd82c2a-c935-42b0-970c-db57e29e292d",
+        "601a354c-998c-4e30-a963-3aa06b33229c",
+        "41e1a745-fa66-4f43-b76a-a7af6f6822b7",
+        "a6f1b47e-3fcd-4310-a731-08ba767f42e6",
+        "0ca57d67-af79-4ccb-9ffc-b707eb7bca43",
+        "ea70de01-9cc2-407f-872d-7ed9ef6a9b2f",
+        "c1e65e04-e6af-4142-a89f-6b177ed026b1",
+        "4a64ed83-c9e2-46f2-8253-020a10bcff4f",
+        "3b0e1a39-c3ef-425c-a918-20371409864f",
+        "debd93a1-e61c-4404-9f89-933fd7f05fda",
+        "5a12d9f0-0ec0-4e15-93bc-b357b651652a",
+        "73d62b75-5e74-4d5b-b26d-aa46962df026",
+        "d96a3ce3-54a2-4209-ba9c-6ebbf639e884",
+        "ceb8aed0-fbfd-4b07-9d6e-51ffabc34f37",
+        "2eb998e1-0dc4-484a-8ba0-588408f96f36",
+        "4aee26bb-8312-458b-8af3-affcf2101d62",
+        "99ebf33c-c94b-474c-a485-5660786904e8",
+        "f3a6223d-9259-4559-9a2c-8d2ffa05eb83",
+        "92c0f0f0-9228-40ae-9af7-488834c69e43",
+        "e8ed6cfd-e58e-4470-af06-79f8c0cb71d1",
+        "9ec95337-0d18-4351-9911-f61864c21b33",
+        "476d733b-60a2-4ed8-bfa3-f7aa8bb8f99b",
+        "4dc39814-e72c-40a1-b3c9-9debaa2fc313",
+        "6760e7f4-6410-453d-82bf-ed777b1a13b1",
+        "18b54cbb-7cbb-4a47-9831-b7bed430de24",
+        "3cd48f0d-553a-40d9-a0c4-8fe8d218a8d5",
+        "23b01fb6-0cda-4d31-91a6-d10d75cfdd73",
+        "17e78483-9afa-4038-bcfd-7716bcd420ad",
+        "7cf4ebdc-0718-482f-a67f-838a29692e49",
+        "fa126127-fe6f-427c-b7c0-309daa439272",
+        "62969de2-cc76-4a99-9d50-273b894d5946",
+        "7bae7573-9d60-4eed-a019-54617b55c2f4",
+        "278c66ee-c3d4-448f-b6c9-4ef94127cea3",
+        "3df2afb2-4f83-4702-8cc4-c8f48883d813",
+        "8a975915-751b-43fe-bd6e-74f71453b03e",
+        "1e36a5e5-e37a-4745-99bc-395ab268f012",
+        "90d3ac36-4520-408f-ba91-5f350947cb3c",
+        "c677165b-1590-4409-a36c-a9c5a53a7928",
+        "85433a2b-3f40-431d-9711-3fbd050e0349",
+        "3bba1db1-082e-4491-a55a-86d37f2e0bc1",
+        "0fe6f93b-030a-4aee-8f0e-e7c3bb1ae837",
+        "ae48400c-6441-4666-b579-2caa69856d6f",
+        "27f52e86-e323-4e58-91f1-e0c5fb4f8686",
+        "9dfc94ce-be6d-46a9-a132-43b951935b87",
+        "14c1ec86-e48a-465c-896b-a2afe40c12b9",
+        "383db059-562c-40ca-8489-c02bbccb9f69",
+        "4efb335f-bdbb-46f6-8ea7-4f6f805ad6bc",
+        "584879d3-e592-4d4a-b70f-171ba395f48a",
+        "8b1d2bd3-df6b-44af-bfe5-c78c79b8df3b",
+        "62d81985-e14d-4003-a011-fb3702613053",
+        "7ea23a01-2c35-4864-8f63-80c69dba13a8",
+        "847ee59f-a503-4a23-bf79-bc8cbe9aab48",
+        "29c63b6a-4050-4079-9056-60d142a473e4",
+        "3d12bcaf-c438-4dbf-a90f-b1dd61ba0c60",
+        "6acf39df-84db-45f0-947c-047820493af3",
+        "f18ee13b-daf7-47da-9e22-c2f837747454",
+        "5c247630-4932-4e4d-8261-711ec9c55017",
+        "eff9f320-3ae2-4fd4-9e7b-e774465aa6e7",
+        "4a88f466-900f-4b9d-9ff7-9d2703959534",
+        "a43da89a-3f1e-488c-83ab-f3cdf949b19b",
+        "271ef339-3d24-4fb6-bafe-1ecfbbb0b391",
+        "028f6f67-0307-479e-9ff5-ef50ec43207b",
+        "187948dc-4eec-47ad-9633-b6eccf406002",
+        "46d4e2ef-3346-4084-95ec-0d18e948c71b",
+        "4b2ca011-d4f2-42d5-8791-8f8eee323307",
+        "8b0a6432-ab1e-4d14-bbad-63d586e874f0",
+        "73580e41-745d-45f3-8120-15bf48a1e1d6",
+        "ba29a55f-de45-472b-93a1-62ccc14b3be0",
+        "f9efe436-9250-49f0-a108-02b4ca54610d",
+        "61b00b6a-97c1-45d5-942f-e1b92b46b7a9",
+        "9c1b8e41-7f2b-4630-8e7d-8c45d9f42c00",
+        "5cdbf72e-aee5-482f-a92a-667fd9cf7cb9",
+        "3a0e9805-d6c8-4765-b44c-631b9462e088",
+        "9899bcdc-dbc4-412d-a3a6-19644cabd548",
+        "9b488020-188a-4fa3-8d69-6d805e373bac",
+        "0f0d6ebe-8b05-42d2-b2e8-061c01d3899c",
+        "e9c5890b-5ca7-4d5f-95e3-52bbee94bf69",
+        "5e526331-8c81-4052-bc00-7c420ba82a84",
+        "f4a10729-3721-4e8a-b0f0-20ffe0849387",
+        "8618caa5-7eb4-4edc-968d-615c8e9fb49c",
+        "f43cf1be-4223-4e86-8c79-2b2b5f655838",
+        "aa2537f1-c503-491f-b6d1-c2ae82cccb89",
+        "86210b66-2274-4c48-a196-172835fd9f26",
+        "14377f54-a936-4ffa-a093-6326827517c0",
+        "4c5afc68-969d-480e-b5a3-015b2339bedc",
+        "706b968b-916a-4afb-8589-156ba63e8575",
+        "7082a10d-12b7-4251-bf39-6728a1a2a9c6",
+        "48cb918e-8c61-41d1-b35d-9c75b43984c4",
+        "a9613fa9-04e2-43b1-a662-3934feeb6ff4",
+        "8248aa66-3591-4450-af38-d7a8f42d495d",
+        "d5a96ffe-0915-4caa-90a2-63ec35d401ce",
+        "365d27d7-db9f-4259-bb66-bf0b690db2c1",
+        "4b9f9e7f-087b-4734-a445-b143d75a44e7",
+        "d4a66cda-27b5-4247-8c48-e4228c746807",
+        "fe35233e-69af-4154-b228-8584c37044d3",
+        "8dd9f30f-52a2-4d5b-9f36-6ede67e88dac",
+        "4e9ebf3f-8fe5-4f52-9f3b-e58853555350",
+        "4b5b04e5-072a-43c1-8837-62b1765f84ac",
+        "60610aaa-2925-4a0d-a580-762bd378251e",
+        "252ffe0e-8d11-488f-b6e1-0ee89eeb7c0d",
+        "5658c730-d974-4ce3-b046-add259d9e018",
+        "b8186aba-97d8-4384-86eb-1e3b8ca8d7e2",
+        "5c61623a-1d78-4691-b736-032bf6c900b6",
+        "0d2e2a49-b645-48f5-a7b5-fbe16d0906d2",
+        "a017d4fb-34e9-477e-919a-c7fe73f8ce73",
+        "5f41a629-5988-4c71-9251-80a2cf0aa696",
+        "3f0d106c-28c2-4a52-a210-3a8fd02b856c",
+        "e1904545-ca2c-4734-9c4c-2f9edb97ce59",
+        "1617d000-287d-4c9c-9bf0-c5490bd9cb8a",
+        "e80531e4-ad27-4f1f-ab88-c6e15de73461",
+        "d59fa937-7226-4824-b170-4fc3639049e1",
+        "a45b4a7f-bb6f-403b-aed8-e20ce10ac323",
+        "7e0b5e84-ccba-40b0-b133-e655c744119a",
+        "187e1594-529d-408f-a7ca-5e6d64f75404",
+        "2e772d5f-d195-4376-a1d0-3b9446d44adc",
+        "0e667160-182e-41c4-9125-2a6588bb7172",
+        "d1a64ae0-30ad-4f2b-9f64-0ed76a00f675",
+        "160d15ba-657e-46fa-8f11-9f325ab548c3",
+        "9a50b30f-1c15-440b-b73c-b08772b0b2eb",
+        "d50a8355-ac5e-475d-ab51-31523225f4e8",
+        "e1aa9703-2f79-4db6-b4da-e3626bd745c8",
+        "9570a101-bad8-47e1-8a3f-36aa2242fed3",
+        "83dae4b3-77d7-4c4f-b125-46faac4dd294",
+        "2d49c867-cae0-4e86-8c60-8f2798777aa3",
+        "90121ac1-7583-4684-a90f-f941f90c48db",
+        "903bfe8d-5030-4a02-a9f9-5fdc3449e15e",
+        "380bdc64-6390-4272-9cee-a6cdee39d37d",
+        "a42c8891-0718-4022-a658-5e2d9383929a",
+        "4bedd606-e517-462f-b309-49e3539741ff",
+        "50f6ae14-6a25-447a-b953-bc799f7250af",
+        "7f0ff441-e3e6-458d-8e2f-de8bfd2dc6e8",
+        "4577110d-ba5d-4946-8305-545115cc3377"
+      ],
+      "tags": [
+        "26.2.0",
+        "AUTO",
+        "ET",
+        "PRE-RELEASE",
+        "SYNC",
+        "UNMAPPED"
+      ]
+    }
+  ]
+}
