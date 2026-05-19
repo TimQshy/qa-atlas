@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase-admin'
 
+interface TestPayload {
+  testFile: string
+  testSuite?: string
+  testName: string
+  status: 'passed' | 'failed' | 'flaky' | 'skipped'
+  durationMs?: number
+  retryCount?: number
+  errorMessage?: string
+}
+
 interface TestRunPayload {
-  date: string      // YYYY-MM-DD from metrics.json
-  startedAt?: string // full ISO from results.json stats.startTime (preferred)
+  date: string
+  startedAt?: string
   buildId: string
   expected: number
   unexpected: number
@@ -16,6 +26,7 @@ interface TestRunPayload {
   hardFailRate: number
   flakyRate: number
   reportUrl?: string
+  tests?: TestPayload[]
 }
 
 function authorized(request: Request): boolean {
@@ -32,13 +43,15 @@ export async function POST(request: Request) {
   const body: TestRunPayload = await request.json()
   const { date, startedAt, buildId, expected = 0, unexpected = 0, flaky = 0, skipped = 0,
     total = 0, durationSec = 0, hardFailTests = [], isInfraFailure = false,
-    hardFailRate = 0, flakyRate = 0, reportUrl } = body
+    hardFailRate = 0, flakyRate = 0, reportUrl, tests } = body
 
   if (!buildId || (!date && !startedAt)) {
     return NextResponse.json({ error: 'buildId and date/startedAt are required' }, { status: 400 })
   }
 
-  const { data, error } = await getAdminClient()
+  const supabase = getAdminClient()
+
+  const { data, error } = await supabase
     .from('test_runs')
     .insert({
       build_id: buildId,
@@ -56,6 +69,22 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  if (tests && tests.length > 0) {
+    const rows = tests.map(t => ({
+      run_id: data.id,
+      test_file: t.testFile,
+      test_suite: t.testSuite ?? null,
+      test_name: t.testName,
+      status: t.status,
+      duration_ms: t.durationMs ?? null,
+      retry_count: t.retryCount ?? 0,
+      error_message: t.errorMessage ?? null,
+    }))
+
+    const { error: testsError } = await supabase.from('test_run_tests').insert(rows)
+    if (testsError) return NextResponse.json({ error: testsError.message }, { status: 500 })
+  }
+
   if (unexpected > 0) {
     await notifySlack({ buildId, expected, unexpected, flaky, skipped, total, durationSec, hardFailTests, reportUrl })
   }
@@ -63,7 +92,7 @@ export async function POST(request: Request) {
   return NextResponse.json(data, { status: 201 })
 }
 
-async function notifySlack(run: Omit<TestRunPayload, 'date' | 'isInfraFailure' | 'hardFailRate' | 'flakyRate'>) {
+async function notifySlack(run: Omit<TestRunPayload, 'date' | 'isInfraFailure' | 'hardFailRate' | 'flakyRate' | 'tests'>) {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL
   if (!webhookUrl) return
 
@@ -89,12 +118,17 @@ async function notifySlack(run: Omit<TestRunPayload, 'date' | 'isInfraFailure' |
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '60'), 200)
+  const includeTests = searchParams.get('include') === 'tests'
 
-  const { data, error } = await getAdminClient()
+  const supabase = getAdminClient()
+
+  const query = supabase
     .from('test_runs')
-    .select('*')
+    .select(includeTests ? '*, test_run_tests(*)' : '*')
     .order('started_at', { ascending: false })
     .limit(limit)
+
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)

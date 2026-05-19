@@ -2,6 +2,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRole } from '@/lib/useRole'
+import JourneyMatrix, { type MatrixRow } from '@/components/JourneyMatrix'
+import FlakyLeaderboard, { type FlakyItem } from '@/components/FlakyLeaderboard'
+import JourneyDetail from '@/components/JourneyDetail'
 
 interface TestRun {
   id: string
@@ -140,18 +143,36 @@ const card: React.CSSProperties = {
   padding: '16px 20px',
 }
 
+interface SlowestItem {
+  test_file: string
+  test_name: string
+  median_duration_ms: number
+}
+
 export default function Dashboard() {
   const router = useRouter()
   const { role } = useRole()
   const [runs, setRuns] = useState<TestRun[]>([])
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [matrix, setMatrix] = useState<MatrixRow[]>([])
+  const [flaky, setFlaky] = useState<FlakyItem[]>([])
+  const [slowest, setSlowest] = useState<SlowestItem[]>([])
+  const [detailFile, setDetailFile] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const runsRes = await fetch('/api/test-runs?limit=60')
+      const [runsRes, matrixRes, flakyRes, slowestRes] = await Promise.all([
+        fetch('/api/test-runs?limit=60'),
+        fetch('/api/test-stats?type=journey-matrix&runs=10'),
+        fetch('/api/test-stats?type=flaky&days=30'),
+        fetch('/api/test-stats?type=slowest'),
+      ])
       if (runsRes.ok) setRuns(await runsRes.json())
+      if (matrixRes.ok) setMatrix(await matrixRes.json())
+      if (flakyRes.ok) setFlaky(await flakyRes.json())
+      if (slowestRes.ok) setSlowest(await slowestRes.json())
       setLastRefresh(new Date())
     } finally {
       setLoading(false)
@@ -359,6 +380,67 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Journey Health Matrix */}
+        <div style={card}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 16 }}>Journey Health Matrix · Last 10 Runs</div>
+          <JourneyMatrix
+            title="UI Journeys"
+            rows={matrix.filter(r => r.test_file.startsWith('journeys/'))}
+            onRowClick={setDetailFile}
+          />
+          {matrix.some(r => r.test_file.startsWith('api/')) && (
+            <div style={{ marginTop: 20 }}>
+              <JourneyMatrix
+                title="API Tests"
+                rows={matrix.filter(r => r.test_file.startsWith('api/'))}
+                onRowClick={setDetailFile}
+              />
+            </div>
+          )}
+          {matrix.length > 0 && !matrix.some(r => r.test_file.startsWith('journeys/') || r.test_file.startsWith('api/')) && (
+            <JourneyMatrix
+              title="All Tests"
+              rows={matrix}
+              onRowClick={setDetailFile}
+            />
+          )}
+        </div>
+
+        {/* Flaky leaderboard + Slowest tests */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
+          <div style={card}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Flaky Leaderboard · 30 Days</div>
+            <FlakyLeaderboard data={flaky} />
+          </div>
+          <div style={card}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Slowest Tests · Median</div>
+            {slowest.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No duration data yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {slowest.map((item, i) => (
+                  <div key={`${item.test_file}::${item.test_name}`} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-faint)', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.test_name}>
+                        {item.test_name}
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.test_file.split('/').pop()}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: item.median_duration_ms > 30000 ? 'var(--red)' : item.median_duration_ms > 15000 ? 'var(--yellow)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {item.median_duration_ms >= 60000
+                        ? `${Math.floor(item.median_duration_ms / 60000)}m${Math.round((item.median_duration_ms % 60000) / 1000)}s`
+                        : `${(item.median_duration_ms / 1000).toFixed(1)}s`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Recent runs */}
         <div style={card}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Recent Runs</div>
@@ -395,6 +477,8 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      <JourneyDetail testFile={detailFile} onClose={() => setDetailFile(null)} />
     </div>
   )
 }

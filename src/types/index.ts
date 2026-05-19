@@ -46,3 +46,53 @@ export interface SnapshotExport {
   items: Item[]
   releases: Release[]
 }
+
+export interface TestRunTest {
+  id: string
+  run_id: string
+  test_file: string
+  test_suite?: string | null
+  test_name: string
+  status: 'passed' | 'failed' | 'flaky' | 'skipped'
+  duration_ms?: number | null
+  retry_count: number
+  error_message?: string | null
+  created_at: string
+}
+
+export interface TestRun {
+  id: string
+  build_id: string
+  started_at: string
+  expected: number
+  unexpected: number
+  flaky: number
+  skipped: number
+  total: number
+  duration_sec: number
+  hard_fail_tests: string[]
+  is_infra_failure: boolean
+  hard_fail_rate: number
+  flaky_rate: number
+  report_url?: string | null
+  created_at: string
+  tests?: TestRunTest[]
+}
+
+export interface TestStatsFlaky {
+  test_file: string
+  test_name: string
+  flaky_count: number
+  last_seen: string
+}
+
+export interface TestStatsSlowest {
+  test_file: string
+  test_name: string
+  median_duration_ms: number
+}
+
+export interface TestStatsJourneyMatrix {
+  test_file: string
+  runs: { run_id: string; started_at: string; status: 'passed' | 'failed' | 'flaky' | 'skipped' | 'not_run' }[]
+}
