@@ -1,0 +1,1 @@
+ALTER TABLE items ADD COLUMN IF NOT EXISTS duplicate_note text NOT NULL DEFAULT '';

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useRole } from '@/lib/useRole'
 
 interface TestRun {
   id: string
@@ -141,6 +142,7 @@ const card: React.CSSProperties = {
 
 export default function Dashboard() {
   const router = useRouter()
+  const { role } = useRole()
   const [runs, setRuns] = useState<TestRun[]>([])
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
@@ -171,20 +173,27 @@ export default function Dashboard() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-0)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)' }}>
       {/* Header */}
       <header style={{ height: 'var(--header-h)', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-1)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10, flexShrink: 0 }}>
-        <button
-          onClick={() => router.push('/')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-default)', background: 'var(--bg-2)', fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-2)')}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          QA Atlas
-        </button>
-        <span style={{ width: 1, height: 18, background: 'var(--border-subtle)' }} />
+        {role === 'qa' && (
+          <>
+            <button
+              onClick={() => router.push('/')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-default)', background: 'var(--bg-2)', fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-2)')}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              QA Atlas
+            </button>
+            <span style={{ width: 1, height: 18, background: 'var(--border-subtle)' }} />
+          </>
+        )}
         <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: -0.2 }}>E2E Pipeline Dashboard</span>
         <div style={{ flex: 1 }} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', background: role === 'dev' ? 'rgba(59,130,246,0.12)' : 'var(--accent-soft)', border: `1px solid ${role === 'dev' ? 'rgba(59,130,246,0.3)' : 'var(--accent-border)'}`, color: role === 'dev' ? 'var(--blue)' : 'var(--accent-text)' }}>
+          {role}
+        </span>
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
           Updated {relativeTime(lastRefresh.toISOString())}
         </span>

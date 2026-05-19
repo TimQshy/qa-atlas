@@ -37,6 +37,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: true,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
   {
     id: 'item-adm-002',
@@ -51,6 +52,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: true,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
   {
     id: 'item-adm-003',
@@ -65,6 +67,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: false,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
 
   {
@@ -80,6 +83,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: true,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
   {
     id: 'item-events-002',
@@ -94,6 +98,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: true,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
 
   {
@@ -109,6 +114,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: false,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
   {
     id: 'item-crm-002',
@@ -123,6 +129,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: false,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
 
   {
@@ -138,6 +145,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: true,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
   {
     id: 'item-analytics-002',
@@ -152,6 +160,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: false,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
 
   {
@@ -167,6 +176,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: true,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
 
   {
@@ -182,6 +192,7 @@ export const SEED_ITEMS: Item[] = [
     is_stable: false,
     is_duplicatable: false,
     jira_synced: false,
+    duplicate_note: '',
   },
 ]
 

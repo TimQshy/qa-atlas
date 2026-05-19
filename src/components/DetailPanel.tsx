@@ -114,9 +114,13 @@ export function DetailPanel({ selected, isHighlighted, onDelete, onUpdate, onCre
   const [addingBug, setAddingBug] = useState(false)
   const [bugDraft, setBugDraft] = useState({ key: '', url: '' })
 
+  // Duplicate note editing
+  const [editingDupNote, setEditingDupNote] = useState(false)
+  const [dupNoteDraft, setDupNoteDraft] = useState('')
+
   // Creating new item (when folder selected)
   const [creatingItem, setCreatingItem] = useState(false)
-  const [newItem, setNewItem] = useState({ title: '', status: 'To Do' as string, priority: 'medium' as string, description: '', is_duplicatable: false })
+  const [newItem, setNewItem] = useState({ title: '', status: 'To Do' as string, priority: 'medium' as string, description: '', is_duplicatable: false, duplicate_note: '' })
 
   // Reset editing states when selected entity changes
   useEffect(() => {
@@ -128,8 +132,10 @@ export function DetailPanel({ selected, isHighlighted, onDelete, onUpdate, onCre
     setAddingBug(false)
     setBugDraft({ key: '', url: '' })
     setConfirmDelete(false)
+    setEditingDupNote(false)
+    setDupNoteDraft('')
     setCreatingItem(false)
-    setNewItem({ title: '', status: 'To Do', priority: 'medium', description: '', is_duplicatable: false })
+    setNewItem({ title: '', status: 'To Do', priority: 'medium', description: '', is_duplicatable: false, duplicate_note: '' })
   }, [selected?.data?.id])
 
   const fetchJira = useCallback(async (key: string) => {
@@ -184,7 +190,7 @@ export function DetailPanel({ selected, isHighlighted, onDelete, onUpdate, onCre
   if (creatingItem && folder) {
     const handleCreate = async () => {
       if (!newItem.title.trim()) return
-      await onCreateItem?.(folder.id, { title: newItem.title, status: newItem.status as Item['status'], priority: newItem.priority as Item['priority'], description: newItem.description, is_duplicatable: newItem.is_duplicatable })
+      await onCreateItem?.(folder.id, { title: newItem.title, status: newItem.status as Item['status'], priority: newItem.priority as Item['priority'], description: newItem.description, is_duplicatable: newItem.is_duplicatable, duplicate_note: newItem.duplicate_note })
       setCreatingItem(false)
     }
     return (
@@ -232,12 +238,22 @@ export function DetailPanel({ selected, isHighlighted, onDelete, onUpdate, onCre
               onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Toggle checked={newItem.is_duplicatable} onChange={v => setNewItem(f => ({ ...f, is_duplicatable: v }))} />
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>Include in release duplication</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Pre-select this case when duplicating a release</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Toggle checked={newItem.is_duplicatable} onChange={v => setNewItem(f => ({ ...f, is_duplicatable: v }))} />
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>Include in release duplication</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Pre-select this case when duplicating a release</div>
+              </div>
             </div>
+            <input
+              value={newItem.duplicate_note}
+              onChange={e => setNewItem(f => ({ ...f, duplicate_note: e.target.value }))}
+              placeholder="Note (why included / excluded)…"
+              style={{ marginLeft: 44, fontSize: 11.5, background: 'var(--bg-1)', border: '1px solid var(--border-subtle)', borderRadius: 5, padding: '5px 10px', outline: 'none', color: 'var(--text-secondary)', width: 'calc(100% - 44px)' }}
+              onFocus={e => e.currentTarget.style.borderColor = 'var(--accent-border)'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+            />
           </div>
 
           <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
@@ -360,14 +376,49 @@ export function DetailPanel({ selected, isHighlighted, onDelete, onUpdate, onCre
         </div>
 
         {/* is_duplicatable toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, padding: '10px 14px', background: 'var(--bg-1)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-          <Toggle checked={entity.is_duplicatable ?? false} onChange={v => onUpdate(entity.id, selected.type, { is_duplicatable: v })} />
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <I.Copy size={12} stroke="var(--accent)" /> Include in release duplication
+        <div style={{ marginBottom: 24, padding: '10px 14px', background: 'var(--bg-1)', borderRadius: 8, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Toggle checked={entity.is_duplicatable ?? false} onChange={v => onUpdate(entity.id, selected.type, { is_duplicatable: v })} />
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <I.Copy size={12} stroke="var(--accent)" /> Include in release duplication
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Pre-select when duplicating a release</div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Pre-select when duplicating a release</div>
           </div>
+          {/* inline note */}
+          {editingDupNote ? (
+            <div style={{ marginLeft: 44, display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                autoFocus
+                value={dupNoteDraft}
+                onChange={e => setDupNoteDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { onUpdate(entity.id, selected.type, { duplicate_note: dupNoteDraft }); setEditingDupNote(false) }
+                  if (e.key === 'Escape') { setEditingDupNote(false) }
+                }}
+                placeholder="Note why included / excluded…"
+                style={{ flex: 1, fontSize: 11.5, background: 'var(--bg-0)', border: '1px solid var(--accent-border)', borderRadius: 5, padding: '4px 8px', outline: 'none', color: 'var(--text-secondary)' }}
+              />
+              <IconBtn onClick={() => { onUpdate(entity.id, selected.type, { duplicate_note: dupNoteDraft }); setEditingDupNote(false) }} style={{ width: 22, height: 22 }}><I.Check size={11} stroke="var(--green)" /></IconBtn>
+              <IconBtn onClick={() => setEditingDupNote(false)} style={{ width: 22, height: 22 }}><I.Close size={11} /></IconBtn>
+            </div>
+          ) : (
+            <div style={{ marginLeft: 44, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {(entity as Item).duplicate_note ? (
+                <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic', flex: 1 }}>{(entity as Item).duplicate_note}</span>
+              ) : (
+                <span style={{ fontSize: 11.5, color: 'var(--text-faint)', fontStyle: 'italic', flex: 1 }}>No note</span>
+              )}
+              <button
+                onClick={() => { setDupNoteDraft((entity as Item).duplicate_note ?? ''); setEditingDupNote(true) }}
+                style={{ fontSize: 11, color: 'var(--text-faint)', cursor: 'pointer', padding: '2px 6px', borderRadius: 3, display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-faint)' }}>
+                <I.Edit size={10} /> edit
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Tickets & Bugs (item only) */}

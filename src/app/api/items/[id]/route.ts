@@ -16,6 +16,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (rest.bugs !== undefined) patch.bugs = rest.bugs
   if (rest.is_stable !== undefined) patch.is_stable = rest.is_stable
   if (rest.is_duplicatable !== undefined) patch.is_duplicatable = rest.is_duplicatable
+  if (rest.duplicate_note !== undefined) patch.duplicate_note = rest.duplicate_note
 
   if (release_id) {
     const { data, error } = await getAdminClient()
