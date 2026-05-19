@@ -194,7 +194,7 @@ export default function Home() {
       setNewRelease(f => ({ ...f, sourceReleaseId: releaseId, selectedFolderIds: new Set(), selectedItemIds: new Set() }))
       return
     }
-    const selFolders = new Set(source.affected_folder_ids.filter(id => folders.find(f => f.id === id)?.is_duplicatable))
+    const selFolders = new Set(source.affected_folder_ids.filter(id => folders.find(f => f.id === id)))
     const selItems = new Set(source.affected_item_ids.filter(id => items.find(i => i.id === id)?.is_duplicatable))
     setNewRelease(f => ({ ...f, sourceReleaseId: releaseId, selectedFolderIds: selFolders, selectedItemIds: selItems }))
   }
@@ -263,7 +263,7 @@ export default function Home() {
 
   // Source release items for the duplicate picker
   const sourceRelease = releases.find(r => r.id === newRelease.sourceReleaseId) ?? null
-  const dupFolders = sourceRelease ? folders.filter(f => sourceRelease.affected_folder_ids.includes(f.id) && f.is_duplicatable) : []
+  const dupFolders = sourceRelease ? folders.filter(f => sourceRelease.affected_folder_ids.includes(f.id)) : []
   const dupItems = sourceRelease ? items.filter(i => sourceRelease.affected_item_ids.includes(i.id) && i.is_duplicatable) : []
 
   return (
@@ -380,24 +380,24 @@ export default function Home() {
                     {/* Item picker when source selected */}
                     {sourceRelease && (dupFolders.length > 0 || dupItems.length > 0) && (
                       <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }} className="qa-scroll">
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <I.Copy size={10} stroke="var(--accent)" /> Only <span style={{ color: 'var(--accent-text)' }}>duplicatable</span> items shown
-                        </div>
                         {dupFolders.length > 0 && (
                           <>
-                            <div style={{ fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 2 }}>Folders</div>
+                            <div style={{ fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              Folders <span style={{ textTransform: 'none', fontSize: 10, color: 'var(--accent-text)', letterSpacing: 0 }}>· always included</span>
+                            </div>
                             {dupFolders.map(f => (
-                              <label key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '2px 0' }}>
-                                <input type="checkbox" checked={newRelease.selectedFolderIds.has(f.id)} onChange={() => toggleDupFolder(f.id)} style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
-                                <I.Folder size={11} stroke="var(--text-muted)" />
+                              <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '2px 0', opacity: 0.8 }}>
+                                <I.Folder size={11} stroke="var(--accent)" />
                                 <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{f.name}</span>
-                              </label>
+                              </div>
                             ))}
                           </>
                         )}
                         {dupItems.length > 0 && (
                           <>
-                            <div style={{ fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 4 }}>Test Cases</div>
+                            <div style={{ fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              Test Cases <span style={{ textTransform: 'none', fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0 }}>· duplicatable only</span>
+                            </div>
                             {dupItems.map(i => (
                               <label key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '2px 0' }}>
                                 <input type="checkbox" checked={newRelease.selectedItemIds.has(i.id)} onChange={() => toggleDupItem(i.id)} style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
