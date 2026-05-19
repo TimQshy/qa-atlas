@@ -188,6 +188,7 @@ export async function GET(req: NextRequest) {
         tickets: [{ key: issue.key, url: `https://${JIRA_HOST}/browse/${issue.key}` }],
         bugs: [],
         is_stable: false,
+        jira_synced: true,
       })
 
       newItemIds.push(newId)

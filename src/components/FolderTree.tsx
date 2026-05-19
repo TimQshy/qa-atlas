@@ -112,6 +112,15 @@ function TreeRow({
         </div>
       )}
 
+      {/* Jira badge */}
+      {kind === 'item' && item?.jira_synced && (
+        <span style={{
+          fontSize: 9, fontWeight: 700, lineHeight: 1, letterSpacing: 0.2,
+          padding: '1px 3px', borderRadius: 3, flexShrink: 0,
+          background: 'var(--blue-soft)', color: 'var(--blue)',
+        }}>J</span>
+      )}
+
       {/* Item status dot */}
       {kind === 'item' && item && !hover && <StatusDot status={item.status} size={6} />}
 

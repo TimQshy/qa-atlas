@@ -19,6 +19,7 @@ export interface Item {
   bugs: { key: string; url?: string }[]
   is_stable: boolean
   is_duplicatable: boolean
+  jira_synced: boolean
 }
 
 export interface Release {

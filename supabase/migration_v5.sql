@@ -1,0 +1,1 @@
+ALTER TABLE items ADD COLUMN IF NOT EXISTS jira_synced boolean NOT NULL DEFAULT false;
