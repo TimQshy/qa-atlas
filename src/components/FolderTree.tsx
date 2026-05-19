@@ -64,13 +64,6 @@ function TreeRow({
         : <I.Doc size={14} stroke={isHighlighted ? 'var(--accent)' : 'var(--text-faint)'} />
       }
 
-      {/* Item ID prefix */}
-      {kind === 'item' && (
-        <span className="qa-mono" style={{ fontSize: 11, color: isHighlighted ? 'var(--accent-text)' : 'var(--text-muted)', marginRight: 1, flexShrink: 0 }}>
-          {id.startsWith('item-') ? id.replace('item-', '').split('-').slice(0, 2).join('-') : id.slice(0, 8)}
-        </span>
-      )}
-
       {/* Label */}
       <span className="qa-truncate" style={{
         flex: 1, color: isHighlighted ? 'var(--text-primary)' : isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',

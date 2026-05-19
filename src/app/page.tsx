@@ -224,7 +224,7 @@ export default function Home() {
         date: newRelease.date,
         tags: newRelease.tags.split(',').map(t => t.trim()).filter(Boolean),
         affected_folder_ids: [...newRelease.selectedFolderIds],
-        affected_item_ids: [...newRelease.selectedItemIds],
+        source_item_ids: [...newRelease.selectedItemIds],
       }),
     })
     if (!res.ok) return

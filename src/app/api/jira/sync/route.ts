@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
   // 5. Fetch the latest release to attach new items to it
   const { data: latestReleaseRow } = await db
     .from('releases')
-    .select('id, affected_item_ids')
+    .select('id, affected_item_ids, affected_folder_ids')
     .order('date', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -152,6 +152,7 @@ export async function GET(req: NextRequest) {
   const results = { inserted: 0, skipped: 0, errors: [] as string[] }
   const folderIds = new Set(folders.map(f => f.id))
   const newItemIds: string[] = []
+  const newItemFolderIds: string[] = []
 
   for (const issue of issues) {
     if (existingKeys.has(issue.key)) {
@@ -190,20 +191,25 @@ export async function GET(req: NextRequest) {
       })
 
       newItemIds.push(newId)
+      newItemFolderIds.push(targetFolderId!)
       results.inserted++
     } catch (err) {
       results.errors.push(`${issue.key}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
-  // 7. Add new items to the latest release
+  // 7. Add new items to the latest release — only if their folder is already in the release
   if (latestReleaseRow && newItemIds.length > 0) {
-    const existing = (latestReleaseRow.affected_item_ids as string[]) ?? []
-    const merged = [...new Set([...existing, ...newItemIds])]
-    await db
-      .from('releases')
-      .update({ affected_item_ids: merged })
-      .eq('id', latestReleaseRow.id)
+    const releaseFolderIds = new Set<string>((latestReleaseRow.affected_folder_ids as string[]) ?? [])
+    const eligible = newItemIds.filter((_, i) => releaseFolderIds.has(newItemFolderIds[i]))
+    if (eligible.length > 0) {
+      const existing = (latestReleaseRow.affected_item_ids as string[]) ?? []
+      const merged = [...new Set([...existing, ...eligible])]
+      await db
+        .from('releases')
+        .update({ affected_item_ids: merged })
+        .eq('id', latestReleaseRow.id)
+    }
   }
 
   return NextResponse.json({
