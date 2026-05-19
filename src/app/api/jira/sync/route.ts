@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'DeepSeek not configured' }, { status: 503 })
   }
 
-  const jql = JIRA_JQL ?? 'project = ET AND status = QA ORDER BY created DESC'
+  const jql = JIRA_JQL ?? 'project = ET AND sprint in openSprints() AND status = "QA" ORDER BY created DESC'
   const creds = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString('base64')
   const db = getAdminClient()
 

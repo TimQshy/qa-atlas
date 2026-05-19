@@ -19,15 +19,6 @@ interface TestRun {
   report_url: string | null
 }
 
-interface JiraBug {
-  key: string
-  summary: string
-  status: string
-  statusCategory: string
-  priority: string
-  assignee: string | null
-}
-
 function passRate(run: TestRun) {
   return run.total > 0 ? (run.expected / run.total) * 100 : 100
 }
@@ -151,25 +142,14 @@ const card: React.CSSProperties = {
 export default function Dashboard() {
   const router = useRouter()
   const [runs, setRuns] = useState<TestRun[]>([])
-  const [bugs, setBugs] = useState<JiraBug[]>([])
-  const [bugsErr, setBugsErr] = useState(false)
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [runsRes, bugsRes] = await Promise.all([
-        fetch('/api/test-runs?limit=60'),
-        fetch('/api/jira/bugs'),
-      ])
+      const runsRes = await fetch('/api/test-runs?limit=60')
       if (runsRes.ok) setRuns(await runsRes.json())
-      if (bugsRes.ok) {
-        setBugs(await bugsRes.json())
-        setBugsErr(false)
-      } else {
-        setBugsErr(true)
-      }
       setLastRefresh(new Date())
     } finally {
       setLoading(false)
@@ -370,81 +350,40 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Bottom row: recent runs + jira bugs */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {/* Recent runs table */}
-          <div style={card}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Recent Runs</div>
-            {runs.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 60px', gap: 8, padding: '0 4px 6px', borderBottom: '1px solid var(--border-subtle)', marginBottom: 4 }}>
-                  {['Status', 'Build', 'Pass', 'Fail', 'Time'].map(h => (
-                    <span key={h} style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.4, textTransform: 'uppercase' }}>{h}</span>
-                  ))}
+        {/* Recent runs */}
+        <div style={card}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Recent Runs</div>
+          {runs.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 60px', gap: 8, padding: '0 4px 6px', borderBottom: '1px solid var(--border-subtle)', marginBottom: 4 }}>
+                {['Status', 'Build', 'Pass', 'Fail', 'Time'].map(h => (
+                  <span key={h} style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.4, textTransform: 'uppercase' }}>{h}</span>
+                ))}
+              </div>
+              {runs.slice(0, 12).map(run => (
+                <div key={run.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 60px', gap: 8, padding: '5px 4px', borderRadius: 5, cursor: 'default' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: run.unexpected > 0 ? 'var(--red)' : 'var(--green)', flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: run.unexpected > 0 ? 'var(--red)' : 'var(--green)', fontWeight: 500 }}>{run.unexpected > 0 ? 'FAIL' : 'PASS'}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={run.build_id}>
+                    {run.report_url
+                      ? <a href={run.report_url} target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'none' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-text)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}>{relativeTime(run.started_at)}</a>
+                      : relativeTime(run.started_at)
+                    }
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--green)', fontVariantNumeric: 'tabular-nums' }}>{run.expected}</span>
+                  <span style={{ fontSize: 11, color: run.unexpected > 0 ? 'var(--red)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{run.unexpected}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtDuration(run.duration_sec)}</span>
                 </div>
-                {runs.slice(0, 12).map(run => (
-                  <div key={run.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 60px', gap: 8, padding: '5px 4px', borderRadius: 5, cursor: 'default' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: run.unexpected > 0 ? 'var(--red)' : 'var(--green)', flexShrink: 0 }} />
-                      <span style={{ fontSize: 10, color: run.unexpected > 0 ? 'var(--red)' : 'var(--green)', fontWeight: 500 }}>{run.unexpected > 0 ? 'FAIL' : 'PASS'}</span>
-                    </div>
-                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={run.build_id}>
-                      {run.report_url
-                        ? <a href={run.report_url} target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'none' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-text)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}>{relativeTime(run.started_at)}</a>
-                        : relativeTime(run.started_at)
-                      }
-                    </span>
-                    <span style={{ fontSize: 11, color: 'var(--green)', fontVariantNumeric: 'tabular-nums' }}>{run.expected}</span>
-                    <span style={{ fontSize: 11, color: run.unexpected > 0 ? 'var(--red)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{run.unexpected}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtDuration(run.duration_sec)}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No runs recorded yet</div>
-            )}
-          </div>
-
-          {/* Jira blockers */}
-          <div style={card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 12, fontWeight: 600 }}>Jira Blockers &amp; Criticals</span>
-              {!bugsErr && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{bugs.length} open</span>}
+              ))}
             </div>
-            {bugsErr ? (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Jira not configured</div>
-            ) : bugs.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {bugs.map(bug => (
-                  <div key={bug.key} style={{ padding: '8px 10px', borderRadius: 6, background: 'var(--bg-3)', border: '1px solid var(--border-subtle)' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 3, flexShrink: 0, marginTop: 1,
-                        background: bug.priority === 'Blocker' ? 'var(--red-soft)' : 'var(--yellow-soft)',
-                        color: bug.priority === 'Blocker' ? 'var(--red)' : 'var(--yellow)',
-                      }}>{bug.priority.toUpperCase()}</span>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-primary)', lineHeight: 1.4, marginBottom: 2 }}>{bug.summary}</div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <span style={{ fontSize: 10, color: 'var(--accent-text)', fontFamily: 'var(--font-mono)' }}>{bug.key}</span>
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{bug.status}</span>
-                          {bug.assignee && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>→ {bug.assignee}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--green)', fontSize: 12 }}>
-                <span style={{ fontSize: 20 }}>✓</span>
-                <span>No open blockers or criticals</span>
-              </div>
-            )}
-          </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No runs recorded yet</div>
+          )}
         </div>
       </div>
     </div>
