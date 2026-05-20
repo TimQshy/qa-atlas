@@ -43,7 +43,7 @@ function fmtDuration(secs: number) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`
 }
 
-// Simple SVG sparkline for pass rate over last N runs
+// Stacked area chart: pass / flaky / fail breakdown per run
 function PassRateChart({ runs }: { runs: TestRun[] }) {
   const W = 560, H = 110
   const PAD = { top: 12, right: 16, bottom: 28, left: 40 }
@@ -59,57 +59,70 @@ function PassRateChart({ runs }: { runs: TestRun[] }) {
     )
   }
 
-  const rates = data.map(passRate)
-  const minY = Math.max(0, Math.min(...rates) - 5)
-  const maxY = 100
+  const n = data.length
+  const xPos = (i: number) => PAD.left + (i / (n - 1)) * cw
+  // Y: 0% at bottom, 100% at top
+  const yPos = (pct: number) => PAD.top + (1 - pct / 100) * ch
 
-  const xPos = (i: number) => PAD.left + (i / (data.length - 1)) * cw
-  const yPos = (r: number) => PAD.top + (1 - (r - minY) / (maxY - minY)) * ch
+  // Per-run stacked percentages (fail at bottom, flaky above, pass at top)
+  const stacked = data.map(r => {
+    const total = r.total > 0 ? r.total : 1
+    const fail  = (r.unexpected / total) * 100
+    const flaky = (r.flaky     / total) * 100
+    return { failTop: fail, flakyTop: fail + flaky }
+  })
 
-  const polyline = rates.map((r, i) => `${xPos(i)},${yPos(r)}`).join(' ')
+  // Build point strings for polygon boundaries
+  const pts = (vals: number[]) => vals.map((v, i) => `${xPos(i)},${yPos(v)}`).join(' ')
+  const ptsRev = (vals: number[]) => [...vals].reverse().map((v, i) => `${xPos(n - 1 - i)},${yPos(v)}`).join(' ')
 
-  // Grid lines at 25% intervals
-  const gridY = [100, 75, 50, 25].filter(v => v >= minY)
+  const bottom   = data.map(() => 0)
+  const failTops  = stacked.map(s => s.failTop)
+  const flakyTops = stacked.map(s => s.flakyTop)
+  const top       = data.map(() => 100)
 
-  // Label every ~7 runs to avoid clutter
-  const labelStep = Math.max(1, Math.floor(data.length / 7))
+  // Polygon for each band: forward edge + reverse edge
+  const failPoly  = `${pts(failTops)} ${ptsRev(bottom)}`
+  const flakyPoly = `${pts(flakyTops)} ${ptsRev(failTops)}`
+  const passPoly  = `${pts(top)} ${ptsRev(flakyTops)}`
+
+  const labelStep = Math.max(1, Math.floor(n / 7))
 
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
-      {/* Grid */}
-      {gridY.map(v => (
+      {/* Grid lines */}
+      {[100, 75, 50, 25].map(v => (
         <g key={v}>
-          <line
-            x1={PAD.left} y1={yPos(v)} x2={PAD.left + cw} y2={yPos(v)}
-            stroke="var(--border-subtle)" strokeWidth={1}
-          />
+          <line x1={PAD.left} y1={yPos(v)} x2={PAD.left + cw} y2={yPos(v)} stroke="var(--border-subtle)" strokeWidth={1} />
           <text x={PAD.left - 6} y={yPos(v) + 4} textAnchor="end" fontSize={9} fill="var(--text-faint)">{v}%</text>
         </g>
       ))}
 
-      {/* Area fill */}
-      <polygon
-        points={`${PAD.left},${PAD.top + ch} ${polyline} ${PAD.left + cw},${PAD.top + ch}`}
-        fill="rgba(63,185,80,0.06)"
-      />
+      {/* Stacked areas: pass (green) → flaky (yellow) → fail (red), bottom-up */}
+      <polygon points={passPoly}  fill="rgba(63,185,80,0.18)" />
+      <polygon points={flakyPoly} fill="rgba(210,153,34,0.45)" />
+      <polygon points={failPoly}  fill="rgba(248,81,73,0.45)" />
 
-      {/* Line */}
-      <polyline points={polyline} fill="none" stroke="var(--green)" strokeWidth={1.5} strokeLinejoin="round" />
+      {/* Boundary lines between zones */}
+      <polyline points={pts(flakyTops)} fill="none" stroke="rgba(210,153,34,0.7)" strokeWidth={1} strokeLinejoin="round" />
+      <polyline points={pts(failTops)}  fill="none" stroke="rgba(248,81,73,0.7)"  strokeWidth={1} strokeLinejoin="round" />
+      {/* Pass rate trend line — runs through the bottom of the green zone */}
+      <polyline points={data.map((r, i) => `${xPos(i)},${yPos(passRate(r))}`).join(' ')} fill="none" stroke="rgba(63,185,80,0.7)" strokeWidth={1.5} strokeLinejoin="round" />
 
-      {/* Dots — colored by pass/fail */}
+      {/* Dots colored by run outcome */}
       {data.map((run, i) => (
         <circle
           key={run.id}
-          cx={xPos(i)} cy={yPos(rates[i])}
+          cx={xPos(i)} cy={yPos(passRate(run))}
           r={3}
-          fill={run.unexpected > 0 ? 'var(--red)' : 'var(--green)'}
+          fill={run.unexpected > 0 ? 'var(--red)' : run.flaky > 0 ? 'var(--yellow)' : 'var(--green)'}
           stroke="var(--bg-2)" strokeWidth={1.5}
         />
       ))}
 
       {/* X-axis time labels */}
       {data.map((run, i) => {
-        if (i % labelStep !== 0 && i !== data.length - 1) return null
+        if (i % labelStep !== 0 && i !== n - 1) return null
         const d = new Date(run.started_at)
         const label = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}h`
         return (
@@ -389,9 +402,13 @@ export default function Dashboard() {
             </div>
             <PassRateChart runs={runs.slice(0, 60)} />
             <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-              {[{ color: 'var(--green)', label: 'All passed' }, { color: 'var(--red)', label: 'Had failures' }].map(({ color, label }) => (
+              {[
+                { color: 'var(--green)',  label: 'Passed' },
+                { color: 'var(--yellow)', label: 'Flaky' },
+                { color: 'var(--red)',    label: 'Failed' },
+              ].map(({ color, label }) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: color, opacity: 0.8 }} />
                   <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{label}</span>
                 </div>
               ))}
