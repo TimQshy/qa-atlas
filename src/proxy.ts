@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 // API routes a Dev user is allowed to call
 const DEV_ALLOWED_API = ['/api/test-runs', '/api/me']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
