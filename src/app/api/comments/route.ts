@@ -7,6 +7,17 @@ export async function GET(request: Request) {
   const entityType = searchParams.get('entity_type')
   const entityId = searchParams.get('entity_id')
   const releaseId = searchParams.get('release_id')
+
+  // Load all comments for a release (used by duplication picker)
+  if (releaseId && !entityType && !entityId) {
+    const { data, error } = await getAdminClient()
+      .from('comments').select('*')
+      .eq('release_id', releaseId)
+      .order('created_at')
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data)
+  }
+
   if (!entityType || !entityId) return NextResponse.json({ error: 'Missing params' }, { status: 400 })
 
   let query = getAdminClient()

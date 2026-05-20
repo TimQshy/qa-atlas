@@ -53,6 +53,7 @@ export const I = {
   Copy:        (p: IconProps) => <Icon {...p}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></Icon>,
   Sparkles:    (p: IconProps) => <Icon {...p} sw={1.4}><path d="M12 3l1.5 4L17 8.5l-3.5 1.5L12 14l-1.5-4L7 8.5l3.5-1.5L12 3z" /><path d="M5 17l.8 2.2L8 20l-2.2.8L5 23l-.8-2.2L2 20l2.2-.8L5 17z" /><path d="M19 2l.6 1.7L21 4.3l-1.4.6L19 7l-.6-1.7L17 4.8l1.4-.5L19 2z" /></Icon>,
   ExternalLink:(p: IconProps) => <Icon {...p}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" /></Icon>,
+  Comment:     (p: IconProps) => <Icon {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Icon>,
   Logo:        (p: IconProps) => (
     <svg width={p?.size ?? 20} height={p?.size ?? 20} viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
       <rect x="2" y="2" width="20" height="20" rx="5" fill="var(--accent)" />

@@ -10,7 +10,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = await request.json()
-  const { name, date, affected_folder_ids = [], source_item_ids = [], tags = [] } = body
+  const { name, date, affected_folder_ids = [], source_item_ids = [], source_comment_ids = [], tags = [] } = body
   if (!name || !date) return NextResponse.json({ error: 'name and date are required' }, { status: 400 })
 
   const db = getAdminClient()
@@ -32,10 +32,22 @@ export async function POST(request: Request) {
     affected_item_ids = copies.map(c => c.id)
   }
 
+  const newId = uuidv4()
   const { data, error } = await db
     .from('releases')
-    .insert({ id: uuidv4(), name, date, affected_folder_ids, affected_item_ids, tags })
+    .insert({ id: newId, name, date, affected_folder_ids, affected_item_ids, tags })
     .select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Duplicate selected comments into the new release
+  if (source_comment_ids.length > 0) {
+    const { data: origComments } = await db
+      .from('comments').select('*').in('id', source_comment_ids)
+    const commentCopies = (origComments ?? []).map((c: Record<string, unknown>) => ({ ...c, id: uuidv4(), release_id: newId }))
+    if (commentCopies.length > 0) {
+      await db.from('comments').insert(commentCopies)
+    }
+  }
+
   return NextResponse.json(data, { status: 201 })
 }

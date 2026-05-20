@@ -40,6 +40,17 @@ export interface TreeNode {
   items: Item[]
 }
 
+export interface Comment {
+  id: string
+  entity_type: 'folder' | 'item'
+  entity_id: string
+  text: string
+  attachments: { name: string; url: string }[]
+  author_email: string | null
+  release_id: string | null
+  created_at: string
+}
+
 export interface SnapshotExport {
   meta: { schemaVersion: number; exportedAt: string }
   folders: Folder[]

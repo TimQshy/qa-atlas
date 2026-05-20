@@ -47,8 +47,9 @@ export default function JourneyMatrix({ title, rows, onRowClick }: Props) {
     )
   }
 
-  const runCount = rows[0]?.runs.length ?? 0
-  // column widths: file name col + N run columns
+  // Reverse so oldest is on the left, newest is on the right
+  const displayRows = rows.map(row => ({ ...row, runs: [...row.runs].reverse() }))
+  const runCount = displayRows[0]?.runs.length ?? 0
   const colTemplate = `minmax(160px, 1fr) repeat(${runCount}, 28px)`
 
   return (
@@ -58,16 +59,16 @@ export default function JourneyMatrix({ title, rows, onRowClick }: Props) {
       </div>
       <div style={{ overflowX: 'auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: colTemplate, gap: 2, minWidth: 0 }}>
-          {/* Header */}
+          {/* Header: oldest → newest (left → right) */}
           <div style={{ fontSize: 9, color: 'var(--text-faint)', paddingBottom: 4 }} />
-          {rows[0].runs.map(r => (
+          {displayRows[0].runs.map(r => (
             <div key={r.run_id} style={{ fontSize: 9, color: 'var(--text-faint)', textAlign: 'center', paddingBottom: 4, writingMode: 'vertical-rl', transform: 'rotate(180deg)', height: 28, lineHeight: 1 }}>
               {shortDate(r.started_at)}
             </div>
           ))}
 
           {/* Rows */}
-          {rows.map(row => (
+          {displayRows.map(row => (
             <>
               <div
                 key={`label-${row.test_file}`}

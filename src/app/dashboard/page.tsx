@@ -43,9 +43,9 @@ function fmtDuration(secs: number) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`
 }
 
-// Stacked area chart: pass / flaky / fail breakdown per run
+// Multi-line chart: each status as % of total per run
 function PassRateChart({ runs }: { runs: TestRun[] }) {
-  const W = 560, H = 110
+  const W = 560, H = 120
   const PAD = { top: 12, right: 16, bottom: 28, left: 40 }
   const cw = W - PAD.left - PAD.right
   const ch = H - PAD.top - PAD.bottom
@@ -61,61 +61,80 @@ function PassRateChart({ runs }: { runs: TestRun[] }) {
 
   const n = data.length
   const xPos = (i: number) => PAD.left + (i / (n - 1)) * cw
-  // Y: 0% at bottom, 100% at top
   const yPos = (pct: number) => PAD.top + (1 - pct / 100) * ch
 
-  // Per-run stacked percentages (fail at bottom, flaky above, pass at top)
-  const stacked = data.map(r => {
-    const total = r.total > 0 ? r.total : 1
-    const fail  = (r.unexpected / total) * 100
-    const flaky = (r.flaky     / total) * 100
-    return { failTop: fail, flakyTop: fail + flaky }
-  })
+  const pct = (count: number, total: number) => total > 0 ? (count / total) * 100 : 0
 
-  // Build point strings for polygon boundaries
-  const pts = (vals: number[]) => vals.map((v, i) => `${xPos(i)},${yPos(v)}`).join(' ')
-  const ptsRev = (vals: number[]) => [...vals].reverse().map((v, i) => `${xPos(n - 1 - i)},${yPos(v)}`).join(' ')
-
-  const bottom   = data.map(() => 0)
-  const failTops  = stacked.map(s => s.failTop)
-  const flakyTops = stacked.map(s => s.flakyTop)
-  const top       = data.map(() => 100)
-
-  // Polygon for each band: forward edge + reverse edge
-  const failPoly  = `${pts(failTops)} ${ptsRev(bottom)}`
-  const flakyPoly = `${pts(flakyTops)} ${ptsRev(failTops)}`
-  const passPoly  = `${pts(top)} ${ptsRev(flakyTops)}`
+  const series = [
+    {
+      key: 'passed',
+      vals: data.map(r => pct(r.expected, r.total)),
+      stroke: 'rgba(63,185,80,0.9)',
+      dot: 'var(--green)',
+      width: 1.5,
+    },
+    {
+      key: 'failed',
+      vals: data.map(r => pct(r.unexpected, r.total)),
+      stroke: 'rgba(248,81,73,0.85)',
+      dot: 'var(--red)',
+      width: 1.2,
+    },
+    {
+      key: 'flaky',
+      vals: data.map(r => pct(r.flaky, r.total)),
+      stroke: 'rgba(210,153,34,0.85)',
+      dot: 'var(--yellow)',
+      width: 1.2,
+    },
+    {
+      key: 'skipped',
+      vals: data.map(r => pct(r.skipped, r.total)),
+      stroke: 'rgba(139,148,158,0.7)',
+      dot: 'var(--text-muted)',
+      width: 1,
+    },
+    {
+      key: 'dnr',
+      vals: data.map(r => pct(Math.max(0, r.total - r.expected - r.unexpected - r.flaky - r.skipped), r.total)),
+      stroke: 'rgba(100,110,125,0.5)',
+      dot: 'var(--text-faint)',
+      width: 1,
+    },
+  ]
 
   const labelStep = Math.max(1, Math.floor(n / 7))
 
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
       {/* Grid lines */}
-      {[100, 75, 50, 25].map(v => (
+      {[100, 75, 50, 25, 0].map(v => (
         <g key={v}>
-          <line x1={PAD.left} y1={yPos(v)} x2={PAD.left + cw} y2={yPos(v)} stroke="var(--border-subtle)" strokeWidth={1} />
+          <line x1={PAD.left} y1={yPos(v)} x2={PAD.left + cw} y2={yPos(v)} stroke="var(--border-subtle)" strokeWidth={v === 0 ? 1 : 0.5} strokeDasharray={v === 0 ? undefined : '3 3'} />
           <text x={PAD.left - 6} y={yPos(v) + 4} textAnchor="end" fontSize={9} fill="var(--text-faint)">{v}%</text>
         </g>
       ))}
 
-      {/* Stacked areas: pass (green) → flaky (yellow) → fail (red), bottom-up */}
-      <polygon points={passPoly}  fill="rgba(63,185,80,0.18)" />
-      <polygon points={flakyPoly} fill="rgba(210,153,34,0.45)" />
-      <polygon points={failPoly}  fill="rgba(248,81,73,0.45)" />
+      {/* Lines — render passed last so it's on top */}
+      {[...series].reverse().map(s => (
+        <polyline
+          key={s.key}
+          points={s.vals.map((v, i) => `${xPos(i)},${yPos(v)}`).join(' ')}
+          fill="none"
+          stroke={s.stroke}
+          strokeWidth={s.width}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      ))}
 
-      {/* Boundary lines between zones */}
-      <polyline points={pts(flakyTops)} fill="none" stroke="rgba(210,153,34,0.7)" strokeWidth={1} strokeLinejoin="round" />
-      <polyline points={pts(failTops)}  fill="none" stroke="rgba(248,81,73,0.7)"  strokeWidth={1} strokeLinejoin="round" />
-      {/* Pass rate trend line — runs through the bottom of the green zone */}
-      <polyline points={data.map((r, i) => `${xPos(i)},${yPos(passRate(r))}`).join(' ')} fill="none" stroke="rgba(63,185,80,0.7)" strokeWidth={1.5} strokeLinejoin="round" />
-
-      {/* Dots colored by run outcome */}
-      {data.map((run, i) => (
+      {/* Dots on passed line only */}
+      {series[0].vals.map((v, i) => (
         <circle
-          key={run.id}
-          cx={xPos(i)} cy={yPos(passRate(run))}
-          r={3}
-          fill={run.unexpected > 0 ? 'var(--red)' : run.flaky > 0 ? 'var(--yellow)' : 'var(--green)'}
+          key={i}
+          cx={xPos(i)} cy={yPos(v)}
+          r={2.5}
+          fill={data[i].unexpected > 0 ? 'var(--red)' : data[i].flaky > 0 ? 'var(--yellow)' : 'var(--green)'}
           stroke="var(--bg-2)" strokeWidth={1.5}
         />
       ))}
@@ -199,7 +218,7 @@ export default function Dashboard() {
         : '/api/test-runs?limit=500'
       const [runsRes, matrixRes, flakyRes, slowestRes] = await Promise.all([
         fetch(runsUrl),
-        fetch('/api/test-stats?type=journey-matrix&runs=10'),
+        fetch('/api/test-stats?type=journey-matrix&runs=30'),
         fetch('/api/test-stats?type=flaky&days=30'),
         fetch('/api/test-stats?type=slowest'),
       ])
@@ -296,7 +315,7 @@ export default function Dashboard() {
         {/* Top stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {/* Last run */}
-          <div style={{ ...card, gridColumn: 'span 1' }}>
+          <div style={card}>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 }}>Last Run</div>
             {loading && !latest ? (
               <div style={{ height: 40, background: 'var(--bg-3)', borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
@@ -390,6 +409,7 @@ export default function Dashboard() {
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No runs yet</div>
             )}
           </div>
+
         </div>
 
         {/* Chart + failing tests row */}
@@ -401,14 +421,16 @@ export default function Dashboard() {
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{runs.length} runs · {periodLabel}</span>
             </div>
             <PassRateChart runs={runs.slice(0, 60)} />
-            <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
               {[
-                { color: 'var(--green)',  label: 'Passed' },
-                { color: 'var(--yellow)', label: 'Flaky' },
-                { color: 'var(--red)',    label: 'Failed' },
+                { color: 'var(--green)',     label: 'Passed' },
+                { color: 'var(--red)',       label: 'Failed' },
+                { color: 'var(--yellow)',    label: 'Flaky' },
+                { color: 'var(--text-muted)', label: 'Skipped' },
+                { color: 'var(--text-faint)', label: 'Did not run' },
               ].map(({ color, label }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: color, opacity: 0.8 }} />
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 16, height: 2, borderRadius: 1, background: color, opacity: 0.85, flexShrink: 0 }} />
                   <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{label}</span>
                 </div>
               ))}
@@ -442,7 +464,7 @@ export default function Dashboard() {
 
         {/* Journey Health Matrix */}
         <div style={card}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 16 }}>Journey Health Matrix · Last 10 Runs</div>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 16 }}>Journey Health Matrix · Last 30 Runs</div>
           <JourneyMatrix
             title="UI Journeys"
             rows={matrix.filter(r => r.test_file.startsWith('journeys/'))}
