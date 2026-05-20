@@ -128,16 +128,16 @@ function PassRateChart({ runs }: { runs: TestRun[] }) {
         />
       ))}
 
-      {/* Dots on passed line only */}
-      {series[0].vals.map((v, i) => (
+      {/* Dots on each line */}
+      {series.flatMap(s => s.vals.map((v, i) => (
         <circle
-          key={i}
+          key={`${s.key}-${i}`}
           cx={xPos(i)} cy={yPos(v)}
           r={2.5}
-          fill={data[i].unexpected > 0 ? 'var(--red)' : data[i].flaky > 0 ? 'var(--yellow)' : 'var(--green)'}
+          fill={s.dot}
           stroke="var(--bg-2)" strokeWidth={1.5}
         />
-      ))}
+      )))}
 
       {/* X-axis time labels */}
       {data.map((run, i) => {
