@@ -159,12 +159,33 @@ export default function Dashboard() {
   const [flaky, setFlaky] = useState<FlakyItem[]>([])
   const [slowest, setSlowest] = useState<SlowestItem[]>([])
   const [detailFile, setDetailFile] = useState<string | null>(null)
+  const [preset, setPreset] = useState<'today' | '7d' | '14d' | '30d' | 'all'>('30d')
+
+  const PRESETS: { value: typeof preset; label: string }[] = [
+    { value: 'today', label: 'Today' },
+    { value: '7d',   label: '7d' },
+    { value: '14d',  label: '14d' },
+    { value: '30d',  label: '30d' },
+    { value: 'all',  label: 'All' },
+  ]
+
+  function presetFrom(p: typeof preset): string | null {
+    if (p === 'all') return null
+    const d = new Date()
+    if (p === 'today') { d.setHours(0, 0, 0, 0); return d.toISOString() }
+    d.setDate(d.getDate() - parseInt(p))
+    return d.toISOString()
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
+      const from = presetFrom(preset)
+      const runsUrl = from
+        ? `/api/test-runs?limit=500&from=${encodeURIComponent(from)}`
+        : '/api/test-runs?limit=500'
       const [runsRes, matrixRes, flakyRes, slowestRes] = await Promise.all([
-        fetch('/api/test-runs?limit=60'),
+        fetch(runsUrl),
         fetch('/api/test-stats?type=journey-matrix&runs=10'),
         fetch('/api/test-stats?type=flaky&days=30'),
         fetch('/api/test-stats?type=slowest'),
@@ -177,18 +198,18 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset])
 
   useEffect(() => { load() }, [load])
 
   const latest = runs[0]
-  const last14days = runs.filter(r => Date.now() - new Date(r.started_at).getTime() < 14 * 86400000)
   const allTimeFailing = topFailingTests(runs)
-  const avgPassRate14 = last14days.length
-    ? last14days.reduce((s, r) => s + passRate(r), 0) / last14days.length
+  const avgPassRate = runs.length
+    ? runs.reduce((s, r) => s + passRate(r), 0) / runs.length
     : null
-
-  const totalRunsFailed = last14days.filter(r => r.unexpected > 0).length
+  const totalRunsFailed = runs.filter(r => r.unexpected > 0).length
+  const periodLabel = PRESETS.find(p => p.value === preset)!.label
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-0)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)' }}>
@@ -211,6 +232,28 @@ export default function Dashboard() {
           </>
         )}
         <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: -0.2 }}>E2E Pipeline Dashboard</span>
+
+        {/* Preset filter strip */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 12, background: 'var(--bg-2)', border: '1px solid var(--border-subtle)', borderRadius: 7, padding: 2 }}>
+          {PRESETS.map(p => (
+            <button
+              key={p.value}
+              onClick={() => setPreset(p.value)}
+              style={{
+                height: 22, padding: '0 9px', borderRadius: 5, fontSize: 11,
+                fontWeight: preset === p.value ? 600 : 400,
+                background: preset === p.value ? 'var(--accent)' : 'transparent',
+                color: preset === p.value ? '#0a0a0b' : 'var(--text-muted)',
+                cursor: 'pointer', transition: 'all .12s',
+              }}
+              onMouseEnter={e => { if (preset !== p.value) e.currentTarget.style.color = 'var(--text-primary)' }}
+              onMouseLeave={e => { if (preset !== p.value) e.currentTarget.style.color = 'var(--text-muted)' }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
         <div style={{ flex: 1 }} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', background: role === 'dev' ? 'rgba(59,130,246,0.12)' : 'var(--accent-soft)', border: `1px solid ${role === 'dev' ? 'rgba(59,130,246,0.3)' : 'var(--accent-border)'}`, color: role === 'dev' ? 'var(--blue)' : 'var(--accent-text)' }}>
           {role}
@@ -294,20 +337,20 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* 14-day pass rate */}
+          {/* Pass rate for selected period */}
           <div style={card}>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 }}>Avg Pass Rate · 14d</div>
-            {avgPassRate14 !== null ? (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 }}>Avg Pass Rate · {periodLabel}</div>
+            {avgPassRate !== null ? (
               <>
-                <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: -1, color: avgPassRate14 >= 90 ? 'var(--green)' : avgPassRate14 >= 70 ? 'var(--yellow)' : 'var(--red)' }}>
-                  {avgPassRate14.toFixed(1)}%
+                <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: -1, color: avgPassRate >= 90 ? 'var(--green)' : avgPassRate >= 70 ? 'var(--yellow)' : 'var(--red)' }}>
+                  {avgPassRate.toFixed(1)}%
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  {last14days.length} runs · {totalRunsFailed} failed
+                  {runs.length} runs · {totalRunsFailed} failed
                 </div>
                 {/* Mini bar */}
                 <div style={{ marginTop: 10, height: 4, background: 'var(--bg-3)', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ width: `${avgPassRate14}%`, height: '100%', background: avgPassRate14 >= 90 ? 'var(--green)' : avgPassRate14 >= 70 ? 'var(--yellow)' : 'var(--red)', borderRadius: 2 }} />
+                  <div style={{ width: `${avgPassRate}%`, height: '100%', background: avgPassRate >= 90 ? 'var(--green)' : avgPassRate >= 70 ? 'var(--yellow)' : 'var(--red)', borderRadius: 2 }} />
                 </div>
               </>
             ) : (
@@ -317,17 +360,17 @@ export default function Dashboard() {
 
           {/* Flaky stats */}
           <div style={card}>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 }}>Flaky · Last 14d</div>
-            {last14days.length > 0 ? (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 }}>Flaky · {periodLabel}</div>
+            {runs.length > 0 ? (
               <>
                 <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: -1, color: 'var(--yellow)' }}>
-                  {last14days.reduce((s, r) => s + r.flaky, 0)}
+                  {runs.reduce((s, r) => s + r.flaky, 0)}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
                   flaky test instances
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                  avg {(last14days.reduce((s, r) => s + r.flaky_rate * 100, 0) / last14days.length).toFixed(1)}% rate/run
+                  avg {(runs.reduce((s, r) => s + r.flaky_rate * 100, 0) / runs.length).toFixed(1)}% rate/run
                 </div>
               </>
             ) : (
@@ -342,7 +385,7 @@ export default function Dashboard() {
           <div style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <span style={{ fontSize: 12, fontWeight: 600 }}>Pass Rate Trend</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>last {Math.min(runs.length, 60)} runs</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{runs.length} runs · {periodLabel}</span>
             </div>
             <PassRateChart runs={runs.slice(0, 60)} />
             <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>

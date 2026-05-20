@@ -117,16 +117,21 @@ async function notifySlack(run: Omit<TestRunPayload, 'date' | 'isInfraFailure' |
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '60'), 200)
+  const limit = Math.min(parseInt(searchParams.get('limit') ?? '60'), 500)
   const includeTests = searchParams.get('include') === 'tests'
+  const from = searchParams.get('from')
+  const to = searchParams.get('to')
 
   const supabase = getAdminClient()
 
-  const query = supabase
+  let query = supabase
     .from('test_runs')
     .select(includeTests ? '*, test_run_tests(*)' : '*')
     .order('started_at', { ascending: false })
     .limit(limit)
+
+  if (from) query = query.gte('started_at', from)
+  if (to) query = query.lte('started_at', to)
 
   const { data, error } = await query
 
