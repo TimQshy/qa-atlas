@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Folder, Item, Release, TreeNode } from '@/types'
+import type { Folder, Item, Release, Comment, TreeNode } from '@/types'
 import { buildTree, computeHighlightedIds } from '@/lib/buildTree'
 import { FolderTree } from '@/components/FolderTree'
 import { DetailPanel } from '@/components/DetailPanel'
@@ -17,11 +17,12 @@ interface NewReleaseState {
   sourceReleaseId: string
   selectedFolderIds: Set<string>
   selectedItemIds: Set<string>
+  selectedCommentIds: Set<string>
 }
 
 const EMPTY_RELEASE: NewReleaseState = {
   open: false, name: '', date: '', tags: '', sourceReleaseId: '',
-  selectedFolderIds: new Set(), selectedItemIds: new Set(),
+  selectedFolderIds: new Set(), selectedItemIds: new Set(), selectedCommentIds: new Set(),
 }
 
 export default function Home() {
@@ -50,18 +51,23 @@ export default function Home() {
 
   // Release creation
   const [newRelease, setNewRelease] = useState<NewReleaseState>(EMPTY_RELEASE)
+  const [sourceComments, setSourceComments] = useState<Comment[]>([])
+  const [releaseComments, setReleaseComments] = useState<Comment[]>([])
 
   const load = useCallback(async (releaseId?: string | null) => {
     setLoading(true)
     try {
       const treeUrl = releaseId ? `/api/tree?release_id=${releaseId}` : '/api/tree'
-      const [treeRes, releasesRes] = await Promise.all([fetch(treeUrl), fetch('/api/releases')])
+      const fetches: Promise<Response>[] = [fetch(treeUrl), fetch('/api/releases')]
+      if (releaseId) fetches.push(fetch(`/api/comments?release_id=${releaseId}`))
+      const [treeRes, releasesRes, commentsRes] = await Promise.all(fetches)
       if (!treeRes.ok || !releasesRes.ok) throw new Error('Failed to load')
       const tree = await treeRes.json()
       const rels = await releasesRes.json()
       setFolders(tree.folders ?? [])
       setItems(tree.items ?? [])
       setReleases(rels ?? [])
+      setReleaseComments(commentsRes?.ok ? await commentsRes.json() : [])
     } finally {
       setLoading(false)
     }
@@ -188,15 +194,19 @@ export default function Home() {
   }
 
   // ── Release creation with duplicate ─────────────────────────────────────
-  const handleSourceReleaseChange = (releaseId: string) => {
+  const handleSourceReleaseChange = async (releaseId: string) => {
     const source = releases.find(r => r.id === releaseId)
     if (!source) {
-      setNewRelease(f => ({ ...f, sourceReleaseId: releaseId, selectedFolderIds: new Set(), selectedItemIds: new Set() }))
+      setNewRelease(f => ({ ...f, sourceReleaseId: releaseId, selectedFolderIds: new Set(), selectedItemIds: new Set(), selectedCommentIds: new Set() }))
+      setSourceComments([])
       return
     }
     const selFolders = new Set(source.affected_folder_ids.filter(id => folders.find(f => f.id === id)))
     const selItems = new Set(source.affected_item_ids.filter(id => items.find(i => i.id === id)?.is_duplicatable))
-    setNewRelease(f => ({ ...f, sourceReleaseId: releaseId, selectedFolderIds: selFolders, selectedItemIds: selItems }))
+    const commentsRes = await fetch(`/api/comments?release_id=${releaseId}`)
+    const comments: Comment[] = commentsRes.ok ? await commentsRes.json() : []
+    setSourceComments(comments)
+    setNewRelease(f => ({ ...f, sourceReleaseId: releaseId, selectedFolderIds: selFolders, selectedItemIds: selItems, selectedCommentIds: new Set() }))
   }
 
   const toggleDupFolder = (id: string) => {
@@ -213,16 +223,16 @@ export default function Home() {
       return { ...f, selectedItemIds: next }
     })
   }
+  const toggleDupComment = (id: string) => {
+    setNewRelease(f => {
+      const next = new Set(f.selectedCommentIds)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return { ...f, selectedCommentIds: next }
+    })
+  }
 
   const handleCreateRelease = async () => {
     if (!newRelease.name.trim() || !newRelease.date) return
-    // When duplicating, only highlight folders that have at least one included item
-    const folderIdsFromItems = new Set(
-      items.filter(i => newRelease.selectedItemIds.has(i.id)).map(i => i.folder_id)
-    )
-    const affectedFolderIds = newRelease.sourceReleaseId
-      ? [...newRelease.selectedFolderIds].filter(id => folderIdsFromItems.has(id))
-      : [...newRelease.selectedFolderIds]
     const res = await fetch('/api/releases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -230,14 +240,16 @@ export default function Home() {
         name: newRelease.name.trim(),
         date: newRelease.date,
         tags: newRelease.tags.split(',').map(t => t.trim()).filter(Boolean),
-        affected_folder_ids: affectedFolderIds,
+        affected_folder_ids: [...newRelease.selectedFolderIds],
         source_item_ids: [...newRelease.selectedItemIds],
+        source_comment_ids: [...newRelease.selectedCommentIds],
       }),
     })
     if (!res.ok) return
     const created = await res.json()
     setReleases(r => [created, ...r])
     setNewRelease(EMPTY_RELEASE)
+    setSourceComments([])
   }
 
   const handleAddFolderToRelease = async (folderId: string) => {
@@ -260,7 +272,8 @@ export default function Home() {
 
   const nodes: TreeNode[] = buildTree(folders, items)
   const selectedRelease = releases.find(r => r.id === selectedReleaseId) ?? null
-  const highlightedIds = computeHighlightedIds(selectedRelease, folders, items)
+  const highlightedIds = computeHighlightedIds(selectedRelease, folders, items, releaseComments)
+  const affectedFolderIds = new Set(selectedRelease?.affected_folder_ids ?? [])
   const excludedIds = new Set(selectedRelease?.excluded_folder_ids ?? [])
   const selectedData = selectedId && selectedType === 'folder'
     ? { type: 'folder' as const, data: folders.find(f => f.id === selectedId)! }
@@ -272,6 +285,7 @@ export default function Home() {
   const sourceRelease = releases.find(r => r.id === newRelease.sourceReleaseId) ?? null
   const dupFolders = sourceRelease ? folders.filter(f => sourceRelease.affected_folder_ids.includes(f.id)) : []
   const dupItems = sourceRelease ? items.filter(i => sourceRelease.affected_item_ids.includes(i.id) && i.is_duplicatable) : []
+  const dupComments = sourceComments
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-0)', color: 'var(--text-primary)', overflow: 'hidden' }}>
@@ -385,7 +399,7 @@ export default function Home() {
                     </div>
 
                     {/* Item picker when source selected */}
-                    {sourceRelease && (dupFolders.length > 0 || dupItems.length > 0) && (
+                    {sourceRelease && (dupFolders.length > 0 || dupItems.length > 0 || dupComments.length > 0) && (
                       <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }} className="qa-scroll">
                         {dupFolders.length > 0 && (
                           <>
@@ -403,7 +417,7 @@ export default function Home() {
                         {dupItems.length > 0 && (
                           <>
                             <div style={{ fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                              Test Cases <span style={{ textTransform: 'none', fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0 }}>· duplicatable only</span>
+                              Test Cases <span style={{ textTransform: 'none', fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0 }}>· select to include</span>
                             </div>
                             {dupItems.map(i => (
                               <label key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '2px 0' }}>
@@ -412,6 +426,27 @@ export default function Home() {
                                 <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }} className="qa-truncate">{i.title}</span>
                               </label>
                             ))}
+                          </>
+                        )}
+                        {dupComments.length > 0 && (
+                          <>
+                            <div style={{ fontSize: 10.5, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              Comments <span style={{ textTransform: 'none', fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0 }}>· select to include</span>
+                            </div>
+                            {dupComments.map(c => {
+                              const entityName = c.entity_type === 'folder'
+                                ? (folders.find(f => f.id === c.entity_id)?.name ?? c.entity_id)
+                                : (items.find(i => i.id === c.entity_id)?.title ?? c.entity_id)
+                              return (
+                                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '2px 0' }}>
+                                  <input type="checkbox" checked={newRelease.selectedCommentIds.has(c.id)} onChange={() => toggleDupComment(c.id)} style={{ accentColor: 'var(--accent)', cursor: 'pointer' }} />
+                                  <I.Comment size={11} stroke="var(--text-muted)" />
+                                  <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }} className="qa-truncate">
+                                    <span style={{ color: 'var(--text-faint)' }}>{entityName}:</span> {c.text?.slice(0, 60)}
+                                  </span>
+                                </label>
+                              )
+                            })}
                           </>
                         )}
                       </div>
@@ -540,7 +575,7 @@ export default function Home() {
               <FolderTree
                 nodes={nodes} selectedId={selectedId}
                 onSelect={(id, type) => { setSelectedId(id); setSelectedType(type) }}
-                highlightedIds={highlightedIds} releaseActive={!!selectedRelease} searchQuery={searchQuery}
+                highlightedIds={highlightedIds} affectedFolderIds={affectedFolderIds} releaseActive={!!selectedRelease} searchQuery={searchQuery}
                 collapseKey={collapseKey} expandKey={expandKey}
                 onAddFolder={parentId => { setAddingFolder({ parentId }); setNewFolderName('') }}
                 onDeleteFolder={id => handleDelete(id, 'folder')}

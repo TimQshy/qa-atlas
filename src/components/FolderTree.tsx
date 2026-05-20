@@ -9,6 +9,7 @@ interface Props {
   selectedId: string | null
   onSelect: (id: string, type: 'folder' | 'item') => void
   highlightedIds: Set<string>
+  affectedFolderIds?: Set<string>
   releaseActive: boolean
   searchQuery: string
   collapseKey?: number
@@ -133,11 +134,11 @@ function TreeRow({
 }
 
 function FolderNode({
-  node, depth, selectedId, onSelect, highlightedIds, releaseActive, searchQuery, collapseKey, expandKey, onAddFolder, onDeleteFolder, excludedIds, onAddFolderToRelease,
+  node, depth, selectedId, onSelect, highlightedIds, affectedFolderIds, releaseActive, searchQuery, collapseKey, expandKey, onAddFolder, onDeleteFolder, excludedIds, onAddFolderToRelease,
 }: {
   node: TreeNode; depth: number; selectedId: string | null
   onSelect: (id: string, type: 'folder' | 'item') => void
-  highlightedIds: Set<string>; releaseActive: boolean; searchQuery: string
+  highlightedIds: Set<string>; affectedFolderIds?: Set<string>; releaseActive: boolean; searchQuery: string
   collapseKey?: number; expandKey?: number
   onAddFolder?: (parentId: string) => void
   onDeleteFolder?: (id: string) => void
@@ -160,19 +161,22 @@ function FolderNode({
   if (releaseActive && excludedIds?.has(node.folder.id)) return null
 
   const q = searchQuery.toLowerCase()
+  const folderVisible = (folderId: string) =>
+    affectedFolderIds?.has(folderId) || highlightedIds.has(folderId)
+
   const visibleItems = node.items.filter(i =>
     (!releaseActive || highlightedIds.has(i.id)) &&
     (!q || i.title.toLowerCase().includes(q))
   )
   const visibleChildren = node.children.filter(c =>
-    (!releaseActive || highlightedIds.has(c.folder.id) ||
+    (!releaseActive || folderVisible(c.folder.id) ||
       c.items.some(i => highlightedIds.has(i.id)) ||
-      c.children.some(gc => highlightedIds.has(gc.folder.id))) &&
+      c.children.some(gc => folderVisible(gc.folder.id))) &&
     (!q || c.folder.name.toLowerCase().includes(q) ||
       c.items.some(i => i.title.toLowerCase().includes(q)))
   )
 
-  if (releaseActive && !highlightedIds.has(node.folder.id) && visibleItems.length === 0 && visibleChildren.length === 0) return null
+  if (releaseActive && !folderVisible(node.folder.id) && visibleItems.length === 0 && visibleChildren.length === 0) return null
   if (q && !releaseActive && visibleItems.length === 0 && visibleChildren.length === 0 && !node.folder.name.toLowerCase().includes(q)) return null
 
   return (
@@ -193,7 +197,7 @@ function FolderNode({
           {visibleChildren.map(child => (
             <FolderNode key={child.folder.id} node={child} depth={depth + 1}
               selectedId={selectedId} onSelect={onSelect}
-              highlightedIds={highlightedIds} releaseActive={releaseActive} searchQuery={searchQuery}
+              highlightedIds={highlightedIds} affectedFolderIds={affectedFolderIds} releaseActive={releaseActive} searchQuery={searchQuery}
               collapseKey={collapseKey} expandKey={expandKey}
               onAddFolder={onAddFolder} onDeleteFolder={onDeleteFolder}
               excludedIds={excludedIds} onAddFolderToRelease={onAddFolderToRelease} />
@@ -210,14 +214,14 @@ function FolderNode({
   )
 }
 
-export function FolderTree({ nodes, selectedId, onSelect, highlightedIds, releaseActive, searchQuery, collapseKey, expandKey, onAddFolder, onDeleteFolder, excludedIds, onAddFolderToRelease }: Props) {
+export function FolderTree({ nodes, selectedId, onSelect, highlightedIds, affectedFolderIds, releaseActive, searchQuery, collapseKey, expandKey, onAddFolder, onDeleteFolder, excludedIds, onAddFolderToRelease }: Props) {
   if (nodes.length === 0) return <div style={{ padding: 16, fontSize: 13, color: 'var(--text-muted)' }}>No folders yet.</div>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       {nodes.map(node => (
         <FolderNode key={node.folder.id} node={node} depth={0}
           selectedId={selectedId} onSelect={onSelect}
-          highlightedIds={highlightedIds} releaseActive={releaseActive} searchQuery={searchQuery}
+          highlightedIds={highlightedIds} affectedFolderIds={affectedFolderIds} releaseActive={releaseActive} searchQuery={searchQuery}
           collapseKey={collapseKey} expandKey={expandKey}
           onAddFolder={onAddFolder} onDeleteFolder={onDeleteFolder}
           excludedIds={excludedIds} onAddFolderToRelease={onAddFolderToRelease} />
