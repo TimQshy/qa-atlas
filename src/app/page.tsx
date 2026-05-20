@@ -216,6 +216,13 @@ export default function Home() {
 
   const handleCreateRelease = async () => {
     if (!newRelease.name.trim() || !newRelease.date) return
+    // When duplicating, only highlight folders that have at least one included item
+    const folderIdsFromItems = new Set(
+      items.filter(i => newRelease.selectedItemIds.has(i.id)).map(i => i.folder_id)
+    )
+    const affectedFolderIds = newRelease.sourceReleaseId
+      ? [...newRelease.selectedFolderIds].filter(id => folderIdsFromItems.has(id))
+      : [...newRelease.selectedFolderIds]
     const res = await fetch('/api/releases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -223,7 +230,7 @@ export default function Home() {
         name: newRelease.name.trim(),
         date: newRelease.date,
         tags: newRelease.tags.split(',').map(t => t.trim()).filter(Boolean),
-        affected_folder_ids: [...newRelease.selectedFolderIds],
+        affected_folder_ids: affectedFolderIds,
         source_item_ids: [...newRelease.selectedItemIds],
       }),
     })
