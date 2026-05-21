@@ -32,6 +32,8 @@ export default function Home() {
   const [releases, setReleases] = useState<Release[]>([])
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncToast, setSyncToast] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
@@ -95,6 +97,26 @@ export default function Home() {
   }
 
   const handleSeed = async () => { setSeeding(true); await fetch('/api/seed', { method: 'POST' }); await load(selectedReleaseId); setSeeding(false) }
+
+  const handleJiraSync = async () => {
+    setSyncing(true)
+    setSyncToast(null)
+    try {
+      const res = await fetch('/api/jira/sync', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setSyncToast(`Sync failed: ${data.error}`)
+      } else {
+        setSyncToast(`+${data.inserted} added, ${data.skipped} skipped`)
+        if (data.inserted > 0) await load(selectedReleaseId)
+      }
+    } catch {
+      setSyncToast('Sync failed')
+    } finally {
+      setSyncing(false)
+      setTimeout(() => setSyncToast(null), 4000)
+    }
+  }
   const handleExport = async () => {
     const res = await fetch('/api/snapshot/export')
     const blob = await res.blob()
@@ -484,6 +506,11 @@ export default function Home() {
             Dashboard
           </button>
           <IconBtn title="Refresh" onClick={() => load(selectedReleaseId)}><I.Refresh size={14} /></IconBtn>
+          <IconBtn title="Jira Sync" onClick={syncing ? undefined : handleJiraSync} style={{ opacity: syncing ? 0.5 : 1, cursor: syncing ? 'default' : undefined }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+            </svg>
+          </IconBtn>
           <IconBtn title="Export" onClick={handleExport}><I.Download size={14} /></IconBtn>
           <IconBtn title="Import" onClick={handleImport}><I.Upload size={14} /></IconBtn>
           <IconBtn title={theme === 'dark' ? 'Light mode' : 'Dark mode'} onClick={toggleTheme}>{theme === 'dark' ? <I.Sun size={14} /> : <I.Moon size={14} />}</IconBtn>
@@ -496,6 +523,12 @@ export default function Home() {
           )}
         </div>
       </header>
+
+      {syncToast && (
+        <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', background: 'var(--bg-3)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '8px 16px', fontSize: 13, color: 'var(--text-primary)', zIndex: 9999, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
+          {syncToast}
+        </div>
+      )}
 
       {/* Body */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>

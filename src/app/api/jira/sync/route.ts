@@ -81,16 +81,7 @@ Respond ONLY with valid JSON, no markdown, no code fences:
 
 const UNSORTABLE_FOLDER_NAME = 'Unsortable'
 
-export async function GET(req: NextRequest) {
-  // Security: require Bearer token matching CRON_SECRET when set
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret) {
-    const auth = req.headers.get('authorization')
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  }
-
+async function runSync() {
   const { JIRA_HOST, JIRA_EMAIL, JIRA_API_TOKEN, JIRA_JQL, DEEPSEEK_API_KEY } = process.env
   if (!JIRA_HOST || !JIRA_EMAIL || !JIRA_API_TOKEN) {
     return NextResponse.json({ error: 'Jira not configured' }, { status: 503 })
@@ -220,4 +211,24 @@ export async function GET(req: NextRequest) {
     ...results,
     release_updated: latestReleaseRow?.id ?? null,
   })
+}
+
+export async function GET(req: NextRequest) {
+  // Security: require Bearer token matching CRON_SECRET when set
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret) {
+    const auth = req.headers.get('authorization')
+    if (auth !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+  return runSync()
+}
+
+export async function POST() {
+  const { createSupabaseServerClient } = await import('@/lib/supabase-server')
+  const supabase = await createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return runSync()
 }
