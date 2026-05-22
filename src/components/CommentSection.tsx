@@ -3,16 +3,36 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { I } from './Icons'
 import { Avatar, IconBtn } from './Primitives'
 
+const URL_RE = /(https?:\/\/[^\s<>"']+)/g
+
+function TextWithLinks({ text, resolved }: { text: string; resolved?: boolean }) {
+  const parts = text.split(URL_RE)
+  return (
+    <span style={{ whiteSpace: 'pre-wrap', textWrap: 'pretty', textDecoration: resolved ? 'line-through' : 'none' } as React.CSSProperties}>
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+            style={{ color: 'var(--blue)', textDecoration: 'underline', wordBreak: 'break-all' }}>
+            {part}
+          </a>
+        ) : part
+      )}
+    </span>
+  )
+}
+
 interface Attachment { url: string; name: string; type: string }
 interface Comment {
   id: string; text: string; attachments: Attachment[]
   author_email: string | null; created_at: string; updated_at?: string | null
+  is_resolved: boolean
 }
 
-function CommentItem({ comment: c, onDelete, onEdit }: {
+function CommentItem({ comment: c, onDelete, onEdit, onResolve }: {
   comment: Comment
   onDelete: (id: string) => void
   onEdit: (id: string, text: string) => void
+  onResolve: (id: string, resolved: boolean) => void
 }) {
   const [hover, setHover] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -31,7 +51,7 @@ function CommentItem({ comment: c, onDelete, onEdit }: {
 
   return (
     <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ position: 'relative', display: 'flex', gap: 12, padding: '12px 0', borderTop: '1px solid var(--border-subtle)' }}>
+      style={{ position: 'relative', display: 'flex', gap: 12, padding: '12px 0', borderTop: '1px solid var(--border-subtle)', opacity: c.is_resolved ? 0.5 : 1, transition: 'opacity .15s' }}>
       <Avatar name={c.author_email} size={26} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -40,8 +60,20 @@ function CommentItem({ comment: c, onDelete, onEdit }: {
             {new Date(c.created_at).toLocaleDateString()} {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
           {c.updated_at && <span style={{ fontSize: 10.5, color: 'var(--text-faint)', fontStyle: 'italic' }}>(edited)</span>}
+          {c.is_resolved && (
+            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.3, padding: '1px 5px', borderRadius: 4, background: 'var(--bg-3)', color: 'var(--text-muted)' }}>
+              Resolved
+            </span>
+          )}
           {hover && !editing && (
             <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+              <IconBtn
+                title={c.is_resolved ? 'Reopen' : 'Resolve'}
+                style={{ width: 22, height: 22, color: c.is_resolved ? 'var(--text-muted)' : 'var(--accent)' }}
+                onClick={() => onResolve(c.id, !c.is_resolved)}
+              >
+                <I.Check size={12} />
+              </IconBtn>
               <IconBtn title="Edit" style={{ width: 22, height: 22 }} onClick={() => { setDraft(c.text); setEditing(true) }}><I.Edit size={12} /></IconBtn>
               <IconBtn title="Delete" style={{ width: 22, height: 22 }} onClick={() => onDelete(c.id)}><I.Trash size={12} /></IconBtn>
             </span>
@@ -62,7 +94,9 @@ function CommentItem({ comment: c, onDelete, onEdit }: {
             </div>
           </div>
         ) : (
-          <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', textWrap: 'pretty' } as React.CSSProperties}>{c.text}</div>
+          <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+            <TextWithLinks text={c.text} resolved={c.is_resolved} />
+          </div>
         )}
 
         {!editing && c.attachments?.length > 0 && (
@@ -86,9 +120,9 @@ function CommentItem({ comment: c, onDelete, onEdit }: {
   )
 }
 
-interface Props { entityType: 'folder' | 'item'; entityId: string; releaseId?: string | null }
+interface Props { entityType: 'folder' | 'item'; entityId: string; releaseId?: string | null; onCommentChange?: () => void }
 
-export function CommentSection({ entityType, entityId, releaseId }: Props) {
+export function CommentSection({ entityType, entityId, releaseId, onCommentChange }: Props) {
   const [comments, setComments] = useState<Comment[]>([])
   const [text, setText] = useState('')
   const [pending, setPending] = useState<Attachment[]>([])
@@ -138,18 +172,27 @@ export function CommentSection({ entityType, entityId, releaseId }: Props) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ entity_type: entityType, entity_id: entityId, text: text.trim(), attachments: pending, release_id: releaseId ?? undefined }),
     })
-    if (res.ok) { setText(''); setPending([]); await load() }
+    if (res.ok) { setText(''); setPending([]); await load(); onCommentChange?.() }
     setSubmitting(false)
   }
 
   const handleDelete = async (id: string) => {
     await fetch(`/api/comments/${id}`, { method: 'DELETE' })
     setComments(c => c.filter(x => x.id !== id))
+    onCommentChange?.()
   }
 
   const handleEdit = async (id: string, newText: string) => {
     const res = await fetch(`/api/comments/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: newText }) })
     if (res.ok) { const u = await res.json(); setComments(c => c.map(x => x.id === id ? { ...x, text: u.text, updated_at: u.updated_at } : x)) }
+  }
+
+  const handleResolve = async (id: string, resolved: boolean) => {
+    const res = await fetch(`/api/comments/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_resolved: resolved }) })
+    if (res.ok) {
+      setComments(c => c.map(x => x.id === id ? { ...x, is_resolved: resolved } : x))
+      onCommentChange?.()
+    }
   }
 
   return (
@@ -163,7 +206,7 @@ export function CommentSection({ entityType, entityId, releaseId }: Props) {
         <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '12px 0' }}>Loading…</div>
       ) : (
         <div>
-          {comments.map(c => <CommentItem key={c.id} comment={c} onDelete={handleDelete} onEdit={handleEdit} />)}
+          {comments.map(c => <CommentItem key={c.id} comment={c} onDelete={handleDelete} onEdit={handleEdit} onResolve={handleResolve} />)}
         </div>
       )}
 

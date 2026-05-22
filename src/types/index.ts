@@ -48,6 +48,7 @@ export interface Comment {
   attachments: { name: string; url: string }[]
   author_email: string | null
   release_id: string | null
+  is_resolved: boolean
   created_at: string
 }
 

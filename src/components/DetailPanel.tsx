@@ -13,6 +13,7 @@ interface Props {
   onUpdate: (id: string, type: 'folder' | 'item', patch: Partial<Folder | Item>) => void
   onCreateItem?: (folderId: string, data: Partial<Item>) => Promise<void>
   releaseId?: string | null
+  onCommentChange?: () => void
 }
 
 interface JiraIssue {
@@ -91,7 +92,7 @@ function InlineDropdown<T extends string>({ options, value, onSelect, renderOpti
   )
 }
 
-export function DetailPanel({ selected, isHighlighted, onDelete, onUpdate, onCreateItem, releaseId }: Props) {
+export function DetailPanel({ selected, isHighlighted, onDelete, onUpdate, onCreateItem, releaseId, onCommentChange }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [jiraCache, setJiraCache] = useState<JiraCache>({})
   const [aiLoading, setAiLoading] = useState(false)
@@ -601,7 +602,7 @@ export function DetailPanel({ selected, isHighlighted, onDelete, onUpdate, onCre
 
         {/* Comments */}
         <section style={{ marginTop: 8, borderTop: '1px solid var(--border-subtle)', paddingTop: 24 }}>
-          <CommentSection entityType={selected.type} entityId={entity.id} releaseId={releaseId} />
+          <CommentSection entityType={selected.type} entityId={entity.id} releaseId={releaseId} onCommentChange={onCommentChange} />
         </section>
       </div>
     </main>

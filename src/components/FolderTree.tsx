@@ -133,6 +133,18 @@ function TreeRow({
   )
 }
 
+function itemMatchesQuery(i: Item, q: string): boolean {
+  return i.title.toLowerCase().includes(q) ||
+    i.tickets?.some(t => t.key.toLowerCase().includes(q)) ||
+    i.bugs?.some(b => b.key.toLowerCase().includes(q))
+}
+
+function nodeMatchesQuery(node: TreeNode, q: string): boolean {
+  return node.folder.name.toLowerCase().includes(q) ||
+    node.items.some(i => itemMatchesQuery(i, q)) ||
+    node.children.some(c => nodeMatchesQuery(c, q))
+}
+
 function FolderNode({
   node, depth, selectedId, onSelect, highlightedIds, affectedFolderIds, releaseActive, searchQuery, collapseKey, expandKey, onAddFolder, onDeleteFolder, excludedIds, onAddFolderToRelease,
 }: {
@@ -158,6 +170,10 @@ function FolderNode({
     setOpen(true)
   }, [expandKey])
 
+  useEffect(() => {
+    if (searchQuery) setOpen(true)
+  }, [searchQuery])
+
   if (releaseActive && excludedIds?.has(node.folder.id)) return null
 
   const q = searchQuery.toLowerCase()
@@ -166,14 +182,13 @@ function FolderNode({
 
   const visibleItems = node.items.filter(i =>
     (!releaseActive || highlightedIds.has(i.id)) &&
-    (!q || i.title.toLowerCase().includes(q))
+    (!q || itemMatchesQuery(i, q))
   )
   const visibleChildren = node.children.filter(c =>
     (!releaseActive || folderVisible(c.folder.id) ||
       c.items.some(i => highlightedIds.has(i.id)) ||
       c.children.some(gc => folderVisible(gc.folder.id))) &&
-    (!q || c.folder.name.toLowerCase().includes(q) ||
-      c.items.some(i => i.title.toLowerCase().includes(q)))
+    (!q || nodeMatchesQuery(c, q))
   )
 
   if (releaseActive && !folderVisible(node.folder.id) && visibleItems.length === 0 && visibleChildren.length === 0) return null

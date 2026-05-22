@@ -274,6 +274,12 @@ export default function Home() {
     setSourceComments([])
   }
 
+  const handleCommentChange = useCallback(async () => {
+    if (!selectedReleaseId) return
+    const res = await fetch(`/api/comments?release_id=${selectedReleaseId}`)
+    if (res.ok) setReleaseComments(await res.json())
+  }, [selectedReleaseId])
+
   const handleAddFolderToRelease = async (folderId: string) => {
     if (!selectedReleaseId) return
     const rel = releases.find(r => r.id === selectedReleaseId)
@@ -635,6 +641,7 @@ export default function Home() {
             onUpdate={handleUpdate}
             onCreateItem={handleCreateItem}
             releaseId={selectedReleaseId}
+            onCommentChange={handleCommentChange}
           />
         </div>
       </div>

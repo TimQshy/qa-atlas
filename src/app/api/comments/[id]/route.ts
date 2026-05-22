@@ -3,10 +3,13 @@ import { getAdminClient } from '@/lib/supabase-admin'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { text } = await request.json()
+  const body = await request.json()
+  const patch: Record<string, unknown> = {}
+  if (body.text !== undefined) { patch.text = body.text; patch.updated_at = new Date().toISOString() }
+  if (body.is_resolved !== undefined) patch.is_resolved = body.is_resolved
   const { data, error } = await getAdminClient()
     .from('comments')
-    .update({ text, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq('id', id)
     .select()
     .single()

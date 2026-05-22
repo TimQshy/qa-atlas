@@ -45,9 +45,10 @@ export function computeHighlightedIds(
     }
   }
 
-  // Comments with a release_id seed highlights too
+  // Only unresolved comments seed highlights
   const itemMap = new Map(items.map(i => [i.id, i]))
   for (const c of comments) {
+    if (c.is_resolved) continue
     if (c.entity_type === 'folder') ids.add(c.entity_id)
     else if (c.entity_type === 'item') {
       ids.add(c.entity_id)
