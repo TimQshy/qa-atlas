@@ -10,19 +10,19 @@ export async function GET(request: Request) {
 
   const supabase = getAdminClient()
 
-  if (type === 'flaky') {
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+  if (type === 'flaky' || type === 'failed-tests') {
+    const since = from ?? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+    const statuses = type === 'failed-tests' ? ['failed'] : ['flaky', 'failed']
 
     const { data, error } = await supabase
       .from('test_run_tests')
       .select('test_file, test_name, status, created_at')
-      .in('status', ['flaky', 'failed'])
+      .in('status', statuses)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Aggregate client-side (Supabase doesn't support GROUP BY via select API)
     const map = new Map<string, { test_file: string; test_name: string; flaky_count: number; last_seen: string }>()
     for (const row of data ?? []) {
       const key = `${row.test_file}::${row.test_name}`
@@ -273,5 +273,5 @@ export async function GET(request: Request) {
     return NextResponse.json(result)
   }
 
-  return NextResponse.json({ error: 'type must be flaky | slowest | journey-matrix | journey-detail | module-stats' }, { status: 400 })
+  return NextResponse.json({ error: 'type must be flaky | failed-tests | slowest | journey-matrix | journey-detail | module-stats' }, { status: 400 })
 }

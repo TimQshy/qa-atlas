@@ -249,18 +249,6 @@ function PassRateChart({ runs }: { runs: TestRun[] }) {
 }
 
 // Top tests by failure frequency across last N runs
-function topFailingTests(runs: TestRun[], topN = 8): Array<{ name: string; count: number; rate: number }> {
-  const counts: Record<string, number> = {}
-  for (const run of runs) {
-    for (const t of run.hard_fail_tests ?? []) {
-      counts[t] = (counts[t] ?? 0) + 1
-    }
-  }
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, topN)
-    .map(([name, count]) => ({ name, count, rate: runs.length > 0 ? (count / runs.length) * 100 : 0 }))
-}
 
 const card: React.CSSProperties = {
   background: 'var(--bg-2)',
@@ -285,6 +273,7 @@ export default function Dashboard() {
   const [flaky, setFlaky] = useState<FlakyItem[]>([])
   const [slowest, setSlowest] = useState<SlowestItem[]>([])
   const [moduleStats, setModuleStats] = useState<ModuleStat[]>([])
+  const [failedTests, setFailedTests] = useState<FlakyItem[]>([])
   const [detailFile, setDetailFile] = useState<string | null>(null)
   const [preset, setPreset] = useState<'today' | '7d' | '14d' | '30d' | 'all'>('30d')
 
@@ -314,19 +303,22 @@ export default function Dashboard() {
 
       const runsUrl = `/api/test-runs?limit=500${fromParam}`
       const matrixUrl = `/api/test-stats?type=journey-matrix${fromParam}`
-      const flakyUrl = `/api/test-stats?type=flaky&days=${flakyDays}`
+      const flakyUrl = `/api/test-stats?type=flaky&days=${flakyDays}${fromParam}`
+      const failedUrl = `/api/test-stats?type=failed-tests&days=${flakyDays}${fromParam}`
       const moduleUrl = `/api/test-stats?type=module-stats${fromParam}`
 
-      const [runsRes, matrixRes, flakyRes, slowestRes, moduleRes] = await Promise.all([
+      const [runsRes, matrixRes, flakyRes, failedRes, slowestRes, moduleRes] = await Promise.all([
         fetch(runsUrl),
         fetch(matrixUrl),
         fetch(flakyUrl),
+        fetch(failedUrl),
         fetch('/api/test-stats?type=slowest'),
         fetch(moduleUrl),
       ])
       if (runsRes.ok) setRuns(await runsRes.json())
       if (matrixRes.ok) setMatrix(await matrixRes.json())
       if (flakyRes.ok) setFlaky(await flakyRes.json())
+      if (failedRes.ok) setFailedTests(await failedRes.json())
       if (slowestRes.ok) setSlowest(await slowestRes.json())
       if (moduleRes.ok) setModuleStats(await moduleRes.json())
       setLastRefresh(new Date())
@@ -339,7 +331,6 @@ export default function Dashboard() {
   useEffect(() => { load() }, [load])
 
   const latest = runs[0]
-  const allTimeFailing = topFailingTests(runs)
   const avgPassRate = runs.length
     ? runs.reduce((s, r) => s + passRate(r), 0) / runs.length
     : null
@@ -542,22 +533,26 @@ export default function Dashboard() {
 
           {/* Top failing tests */}
           <div style={card}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Most Failed Tests</div>
-            {allTimeFailing.length > 0 ? (
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Most Failed Tests · {periodLabel}</div>
+            {failedTests.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {allTimeFailing.map(({ name, count, rate }) => (
-                  <div key={name}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, lineHeight: 1.4 }} title={name}>
-                        {name.split('/').pop()}
-                      </span>
-                      <span style={{ fontSize: 10, color: 'var(--red)', fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>{count}×</span>
+                {failedTests.map(item => {
+                  const maxCount = failedTests[0]?.flaky_count ?? 1
+                  const barPct = (item.flaky_count / maxCount) * 100
+                  return (
+                    <div key={`${item.test_file}::${item.test_name}`}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, lineHeight: 1.4 }} title={item.test_name}>
+                          {item.test_name}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--red)', fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>{item.flaky_count}×</span>
+                      </div>
+                      <div style={{ height: 3, background: 'var(--bg-3)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ width: `${barPct}%`, height: '100%', background: 'var(--red)', opacity: 0.7, borderRadius: 2 }} />
+                      </div>
                     </div>
-                    <div style={{ height: 3, background: 'var(--bg-3)', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ width: `${Math.min(rate, 100)}%`, height: '100%', background: `color-mix(in srgb, var(--red) ${Math.round(rate + 30)}%, var(--yellow))`, borderRadius: 2 }} />
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No failures recorded</div>
