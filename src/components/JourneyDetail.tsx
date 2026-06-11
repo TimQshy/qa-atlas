@@ -32,6 +32,21 @@ const STATUS_COLOR: Record<string, string> = {
   not_run: 'var(--bg-3)',
 }
 
+const STATUS_RANK: Record<string, number> = { failed: 0, flaky: 1, skipped: 2, passed: 3, not_run: 4 }
+
+function worstStatusPerRun(data: DetailData): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const test of data.tests) {
+    for (const r of test.runs) {
+      const cur = map.get(r.run_id)
+      if (!cur || STATUS_RANK[r.status] < STATUS_RANK[cur]) {
+        map.set(r.run_id, r.status)
+      }
+    }
+  }
+  return map
+}
+
 function shortDate(iso: string) {
   const d = new Date(iso)
   return `${d.getMonth() + 1}/${d.getDate()}`
@@ -63,7 +78,8 @@ export default function JourneyDetail({ testFile, runs = 10, onClose }: Props) {
 
   if (!testFile) return null
 
-  const runCount = data?.runs.length ?? runs
+  const displayRuns = data ? [...data.runs].reverse() : []
+  const runCount = data ? displayRuns.length : runs
   const colTemplate = `minmax(180px, 1fr) repeat(${runCount}, 26px) 60px`
 
   return (
@@ -96,9 +112,33 @@ export default function JourneyDetail({ testFile, runs = 10, onClose }: Props) {
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{basename(testFile)}</div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{testFile}</div>
+            {data && (() => {
+              const worstMap = worstStatusPerRun(data)
+              const runOrder = displayRuns
+              return (
+                <div style={{ display: 'flex', gap: 3, marginTop: 8, flexWrap: 'wrap' }}>
+                  {runOrder.map(r => {
+                    const status = worstMap.get(r.run_id) ?? 'not_run'
+                    return (
+                      <div
+                        key={r.run_id}
+                        title={`${shortDate(r.started_at)} · ${status}`}
+                        style={{
+                          width: 14, height: 14,
+                          borderRadius: 3,
+                          background: STATUS_COLOR[status] ?? 'var(--bg-3)',
+                          opacity: status === 'not_run' ? 0.3 : 0.88,
+                          flexShrink: 0,
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         </div>
 
@@ -117,7 +157,7 @@ export default function JourneyDetail({ testFile, runs = 10, onClose }: Props) {
               <div style={{ display: 'grid', gridTemplateColumns: colTemplate, gap: 3, minWidth: 0 }}>
                 {/* Header */}
                 <div style={{ fontSize: 9, color: 'var(--text-faint)', paddingBottom: 4 }}>Test</div>
-                {data.runs.map(r => (
+                {displayRuns.map(r => (
                   <div key={r.run_id} style={{ fontSize: 9, color: 'var(--text-faint)', textAlign: 'center', paddingBottom: 4, writingMode: 'vertical-rl', transform: 'rotate(180deg)', height: 28, lineHeight: 1 }}>
                     {shortDate(r.started_at)}
                   </div>
@@ -134,20 +174,26 @@ export default function JourneyDetail({ testFile, runs = 10, onClose }: Props) {
                     >
                       {test.test_name}
                     </div>
-                    {test.runs.map(r => (
-                      <div
-                        key={`${test.test_name}-${r.run_id}`}
-                        title={`${r.status} · ${shortDate(r.started_at)}`}
-                        style={{
-                          width: 20, height: 20,
-                          borderRadius: 3,
-                          background: STATUS_COLOR[r.status] ?? 'var(--bg-3)',
-                          opacity: r.status === 'not_run' ? 0.3 : 0.85,
-                          alignSelf: 'center',
-                          justifySelf: 'center',
-                        }}
-                      />
-                    ))}
+                    {(() => {
+                      const runMap = Object.fromEntries(test.runs.map(r => [r.run_id, r.status]))
+                      return displayRuns.map(r => {
+                        const status = runMap[r.run_id] ?? 'not_run'
+                        return (
+                          <div
+                            key={`${test.test_name}-${r.run_id}`}
+                            title={`${status} · ${shortDate(r.started_at)}`}
+                            style={{
+                              width: 20, height: 20,
+                              borderRadius: 3,
+                              background: STATUS_COLOR[status] ?? 'var(--bg-3)',
+                              opacity: status === 'not_run' ? 0.3 : 0.85,
+                              alignSelf: 'center',
+                              justifySelf: 'center',
+                            }}
+                          />
+                        )
+                      })
+                    })()}
                     <div
                       key={`dur-${test.test_name}`}
                       style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'right', alignSelf: 'center', fontVariantNumeric: 'tabular-nums' }}

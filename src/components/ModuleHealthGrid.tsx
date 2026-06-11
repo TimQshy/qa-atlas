@@ -1,45 +1,12 @@
 'use client'
 
 import type { ModuleStat } from '@/types'
+import { toGroup } from '@/lib/moduleGroup'
 
 interface Props {
   data: ModuleStat[]
-}
-
-// Maps raw module/file names → semantic group
-const MODULE_GROUP: Record<string, string> = {}
-const PATTERNS: [RegExp, string][] = [
-  [/^auth|^api-auth/,                          'auth'],
-  [/^contact|^merge-records|^find-duplicates/, 'contacts'],
-  [/^event|^appointment/,                      'events'],
-  [/^student|^defer-student|^merge-students/,  'students'],
-  [/^application|^apply-form/,                 'applications'],
-  [/^form|^lead-score|^edit-sign-up|^webform/, 'forms'],
-  [/^school|^admin|^multi-role/,               'admin'],
-  [/^activity/,                                'activity-log'],
-  [/^can-deactivate/,                          'navigation'],
-  [/^analytics/,                               'analytics'],
-  [/^communication/,                           'communications'],
-  [/^cross-cutting/,                           'cross-cutting'],
-  [/^task/,                                    'tasks'],
-  [/^dashboard/,                               'dashboard'],
-  [/^file-upload/,                             'file-uploads'],
-  [/^entit/,                                   'entities'],
-  [/^enquir/,                                  'enquiries'],
-]
-
-function toGroup(raw: string): string {
-  if (MODULE_GROUP[raw]) return MODULE_GROUP[raw]
-  const name = raw
-    .replace(/\.journey\.spec\.ts$/, '')
-    .replace(/\.spec\.ts$/, '')
-    .replace(/\.setup\.ts$/, '')
-    .replace(/\.teardown\.ts$/, '')
-  for (const [re, group] of PATTERNS) {
-    if (re.test(name)) { MODULE_GROUP[raw] = group; return group }
-  }
-  MODULE_GROUP[raw] = name
-  return name
+  selectedModule?: string | null
+  onModuleClick?: (module: string) => void
 }
 
 function groupStats(data: ModuleStat[]): ModuleStat[] {
@@ -114,22 +81,31 @@ function Sparkline({ runs }: { runs: ModuleStat['runs'] }) {
   )
 }
 
-function ModuleCard({ stat }: { stat: ModuleStat }) {
+function ModuleCard({ stat, active, onClick }: { stat: ModuleStat; active: boolean; onClick: () => void }) {
   const rate = stat.last_pass_rate ?? stat.avg_pass_rate
   const color = rateColor(rate)
   const label = stat.module
 
   return (
-    <div style={{
-      background: 'var(--bg-2)',
-      border: '1px solid var(--border-subtle)',
-      borderRadius: 8,
-      padding: '12px 14px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 6,
-      minWidth: 0,
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        background: active ? 'var(--bg-3)' : 'var(--bg-2)',
+        border: active ? `1px solid ${color}` : '1px solid var(--border-subtle)',
+        borderRadius: 8,
+        padding: '12px 14px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        minWidth: 0,
+        cursor: 'pointer',
+        transition: 'border-color .12s, background .12s',
+        outline: active ? `2px solid ${color}` : 'none',
+        outlineOffset: -1,
+      }}
+      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-3)' }}
+      onMouseLeave={e => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-2)' }}
+    >
       {/* Module name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={stat.module}>
@@ -179,7 +155,7 @@ function ModuleCard({ stat }: { stat: ModuleStat }) {
   )
 }
 
-export default function ModuleHealthGrid({ data }: Props) {
+export default function ModuleHealthGrid({ data, selectedModule, onModuleClick }: Props) {
   const grouped = groupStats(data)
 
   if (grouped.length === 0) {
@@ -197,7 +173,12 @@ export default function ModuleHealthGrid({ data }: Props) {
       gap: 10,
     }}>
       {grouped.map(stat => (
-        <ModuleCard key={stat.module} stat={stat} />
+        <ModuleCard
+          key={stat.module}
+          stat={stat}
+          active={selectedModule === stat.module}
+          onClick={() => onModuleClick?.(stat.module)}
+        />
       ))}
     </div>
   )

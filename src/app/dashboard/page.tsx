@@ -7,6 +7,7 @@ import FlakyLeaderboard, { type FlakyItem } from '@/components/FlakyLeaderboard'
 import JourneyDetail from '@/components/JourneyDetail'
 import ModuleHealthGrid from '@/components/ModuleHealthGrid'
 import type { ModuleStat } from '@/types'
+import { toGroup } from '@/lib/moduleGroup'
 
 interface TestRun {
   id: string
@@ -276,6 +277,8 @@ export default function Dashboard() {
   const [failedTests, setFailedTests] = useState<FlakyItem[]>([])
   const [detailFile, setDetailFile] = useState<string | null>(null)
   const [preset, setPreset] = useState<'today' | '7d' | '14d' | '30d' | 'all'>('30d')
+  const [selectedModule, setSelectedModule] = useState<string | null>(null)
+  const [moduleFiles, setModuleFiles] = useState<Map<string, Set<string>>>(new Map())
 
   const PRESETS: { value: typeof preset; label: string }[] = [
     { value: 'today', label: 'Today' },
@@ -311,13 +314,14 @@ export default function Dashboard() {
       const flakyUrl = `/api/test-stats?type=flaky&days=${flakyDays}${fromParam}`
       const failedUrl = `/api/test-stats?type=failed-tests&days=${flakyDays}${fromParam}`
 
-      const [runsRes, matrixRes, flakyRes, failedRes, slowestRes, moduleRes] = await Promise.all([
+      const [runsRes, matrixRes, flakyRes, failedRes, slowestRes, moduleRes, moduleFilesRes] = await Promise.all([
         fetch(runsUrl),
         fetch(matrixUrl),
         fetch(flakyUrl),
         fetch(failedUrl),
         fetch('/api/test-stats?type=slowest'),
         fetch(moduleUrl),
+        fetch('/api/test-stats?type=module-files'),
       ])
       if (runsRes.ok) setRuns(await runsRes.json())
       if (matrixRes.ok) setMatrix(await matrixRes.json())
@@ -325,6 +329,16 @@ export default function Dashboard() {
       if (failedRes.ok) setFailedTests(await failedRes.json())
       if (slowestRes.ok) setSlowest(await slowestRes.json())
       if (moduleRes.ok) setModuleStats(await moduleRes.json())
+      if (moduleFilesRes.ok) {
+        const pairs: { module: string; test_file: string }[] = await moduleFilesRes.json()
+        const map = new Map<string, Set<string>>()
+        for (const { module, test_file } of pairs) {
+          const group = toGroup(module)
+          if (!map.has(group)) map.set(group, new Set())
+          map.get(group)!.add(test_file)
+        }
+        setModuleFiles(map)
+      }
       setLastRefresh(new Date())
     } finally {
       setLoading(false)
@@ -333,6 +347,10 @@ export default function Dashboard() {
   }, [preset])
 
   useEffect(() => { load() }, [load])
+
+  const filteredMatrix = selectedModule && moduleFiles.has(selectedModule)
+    ? matrix.filter(r => moduleFiles.get(selectedModule)!.has(r.test_file))
+    : matrix
 
   const latest = runs[0]
   const avgPassRate = runs.length
@@ -566,21 +584,44 @@ export default function Dashboard() {
 
         {/* Module Health */}
         <div style={card}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 16 }}>Module Health · {periodLabel}</div>
-          <ModuleHealthGrid data={moduleStats} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Module Health · {periodLabel}</span>
+            {selectedModule && (
+              <button
+                onClick={() => setSelectedModule(null)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 20, padding: '0 7px', borderRadius: 4, border: '1px solid var(--border-default)', background: 'var(--bg-3)', fontSize: 10, color: 'var(--text-secondary)', cursor: 'pointer' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+              >
+                ✕ Reset filter
+              </button>
+            )}
+          </div>
+          <ModuleHealthGrid
+            data={moduleStats}
+            selectedModule={selectedModule}
+            onModuleClick={m => setSelectedModule(prev => prev === m ? null : m)}
+          />
         </div>
 
         {/* Journey Health Matrix */}
         <div style={card}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 16 }}>Journey Health Matrix · {periodLabel}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Journey Health Matrix · {periodLabel}</span>
+            {selectedModule && (
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--bg-3)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 7px' }}>
+                {selectedModule}
+              </span>
+            )}
+          </div>
           {(() => {
-            const journeyRows = matrix.filter(r => r.test_file.includes('/journeys/') || r.test_file.includes('journey.spec'))
-            const apiRows = matrix.filter(r => r.test_file.includes('/api/') || r.test_file.includes('-api.spec'))
-            const otherRows = matrix.filter(r => !journeyRows.includes(r) && !apiRows.includes(r))
+            const journeyRows = filteredMatrix.filter(r => r.test_file.includes('/journeys/') || r.test_file.includes('journey.spec'))
+            const apiRows = filteredMatrix.filter(r => r.test_file.includes('/api/') || r.test_file.includes('-api.spec'))
+            const otherRows = filteredMatrix.filter(r => !journeyRows.includes(r) && !apiRows.includes(r))
             const hasJourneys = journeyRows.length > 0
             const hasApi = apiRows.length > 0
             if (!hasJourneys && !hasApi) {
-              return <JourneyMatrix title="All Tests" rows={matrix} onRowClick={setDetailFile} />
+              return <JourneyMatrix title="All Tests" rows={filteredMatrix} onRowClick={setDetailFile} />
             }
             return (
               <>

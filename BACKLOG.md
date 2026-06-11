@@ -6,7 +6,20 @@ Tasks ordered by priority. Pick one, ship it, delete it from the list.
 
 ## Open
 
-### 1. Run type separation in Recent Runs + chart
+### 1. Per-journey run status strip (passed / flaky / skipped / not_run)
+**What:** В боковом списке джорни (или на странице каждого джорни) показать последние N ранов в виде цветных точек/клеток: зелёный = passed, жёлтый = flaky, серый = skipped, тёмный = not_run.
+
+**Why:** Journey Matrix на дашборде уже делает это на уровне `test_file`, но если открыть конкретный джорни — там нет быстрого "полосы здоровья" по последним ранам.
+
+**Steps:**
+- Переиспользовать существующий `journey-detail` API (уже возвращает `runs` с `status` по каждому тесту)
+- Агрегировать статусы по рану (worst status wins: failed > flaky > skipped > passed)
+- Отрендерить горизонтальную полосу из 10 последних ранов аналогично ячейкам в `JourneyMatrix`
+- Цвета: `var(--green)` passed · `var(--yellow)` flaky · `var(--text-faint)` skipped · `var(--bg-3)` not_run
+
+---
+
+### 2. Run type separation in Recent Runs + chart
 **What:** Each CI run has a type: `smoke`, `regression`, `sms-email`. Show it in the Recent Runs table and as a tooltip on the Pass Rate Trend chart.
 
 **Why:** Right now all runs look identical. Hard to tell a 13-test smoke from a 950-test regression at a glance.

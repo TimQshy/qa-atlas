@@ -271,5 +271,23 @@ export async function GET(request: Request) {
     return NextResponse.json(result)
   }
 
-  return NextResponse.json({ error: 'type must be flaky | failed-tests | slowest | journey-matrix | journey-detail | module-stats' }, { status: 400 })
+  if (type === 'module-files') {
+    const { data, error } = await supabase
+      .from('test_run_tests')
+      .select('module, test_file')
+      .not('module', 'is', null)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    const seen = new Set<string>()
+    const result: { module: string; test_file: string }[] = []
+    for (const row of data ?? []) {
+      if (!row.module) continue
+      const key = `${row.module}::${row.test_file}`
+      if (!seen.has(key)) { seen.add(key); result.push({ module: row.module, test_file: row.test_file }) }
+    }
+    return NextResponse.json(result)
+  }
+
+  return NextResponse.json({ error: 'type must be flaky | failed-tests | slowest | journey-matrix | journey-detail | module-stats | module-files' }, { status: 400 })
 }
