@@ -1,10 +1,12 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRole } from '@/lib/useRole'
 import JourneyMatrix, { type MatrixRow } from '@/components/JourneyMatrix'
 import FlakyLeaderboard, { type FlakyItem } from '@/components/FlakyLeaderboard'
 import JourneyDetail from '@/components/JourneyDetail'
+import ModuleHealthGrid from '@/components/ModuleHealthGrid'
+import type { ModuleStat } from '@/types'
 
 interface TestRun {
   id: string
@@ -21,6 +23,7 @@ interface TestRun {
   hard_fail_rate: number
   flaky_rate: number
   report_url: string | null
+  run_type: string | null
 }
 
 function passRate(run: TestRun) {
@@ -43,8 +46,48 @@ function fmtDuration(secs: number) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`
 }
 
+type RunTypeKey = 'smoke' | 'regression' | 'sms-email' | string
+
+function runTypeLabel(raw: string | null | undefined): string {
+  if (!raw) return ''
+  if (raw === 'post-deploy' || raw === 'smoke') return 'smoke'
+  if (raw === 'regression cron' || raw === 'regression') return 'regression'
+  if (raw === 'sms-email cron' || raw === 'sms-email') return 'sms-email'
+  return raw
+}
+
+function RunTypeBadge({ runType }: { runType: string | null | undefined }) {
+  const label = runTypeLabel(runType)
+  if (!label) return null
+  const styles: Record<string, React.CSSProperties> = {
+    smoke:      { background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' },
+    regression: { background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' },
+    'sms-email':{ background: 'rgba(251,146,60,0.12)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.3)' },
+  }
+  const s: React.CSSProperties = {
+    fontSize: 9, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase',
+    padding: '1px 5px', borderRadius: 4, flexShrink: 0,
+    ...(styles[label] ?? { background: 'var(--bg-3)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }),
+  }
+  return <span style={s}>{label}</span>
+}
+
 // Multi-line chart: each status as % of total per run
 function PassRateChart({ runs }: { runs: TestRun[] }) {
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (selectedIdx === null) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setSelectedIdx(null) }
+    function onDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setSelectedIdx(null)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onDown)
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onDown) }
+  }, [selectedIdx])
+
   const W = 560, H = 120
   const PAD = { top: 12, right: 16, bottom: 28, left: 40 }
   const cw = W - PAD.left - PAD.right
@@ -62,95 +105,146 @@ function PassRateChart({ runs }: { runs: TestRun[] }) {
   const n = data.length
   const xPos = (i: number) => PAD.left + (i / (n - 1)) * cw
   const yPos = (pct: number) => PAD.top + (1 - pct / 100) * ch
+  const hitW = Math.max(8, cw / Math.max(n - 1, 1))
 
   const pct = (count: number, total: number) => total > 0 ? (count / total) * 100 : 0
 
   const series = [
-    {
-      key: 'passed',
-      vals: data.map(r => pct(r.expected, r.total)),
-      stroke: 'rgba(63,185,80,0.9)',
-      dot: 'var(--green)',
-      width: 1.5,
-    },
-    {
-      key: 'failed',
-      vals: data.map(r => pct(r.unexpected, r.total)),
-      stroke: 'rgba(248,81,73,0.85)',
-      dot: 'var(--red)',
-      width: 1.2,
-    },
-    {
-      key: 'flaky',
-      vals: data.map(r => pct(r.flaky, r.total)),
-      stroke: 'rgba(210,153,34,0.85)',
-      dot: 'var(--yellow)',
-      width: 1.2,
-    },
-    {
-      key: 'skipped',
-      vals: data.map(r => pct(r.skipped, r.total)),
-      stroke: 'rgba(139,148,158,0.7)',
-      dot: 'var(--text-muted)',
-      width: 1,
-    },
-    {
-      key: 'dnr',
-      vals: data.map(r => pct(Math.max(0, r.total - r.expected - r.unexpected - r.flaky - r.skipped), r.total)),
-      stroke: 'rgba(100,110,125,0.5)',
-      dot: 'var(--text-faint)',
-      width: 1,
-    },
+    { key: 'passed', vals: data.map(r => pct(r.expected, r.total)),   stroke: 'rgba(63,185,80,0.9)',   dot: 'var(--green)',      width: 1.5 },
+    { key: 'failed', vals: data.map(r => pct(r.unexpected, r.total)), stroke: 'rgba(248,81,73,0.85)',  dot: 'var(--red)',        width: 1.2 },
+    { key: 'flaky',  vals: data.map(r => pct(r.flaky, r.total)),      stroke: 'rgba(210,153,34,0.85)', dot: 'var(--yellow)',     width: 1.2 },
+    { key: 'skipped',vals: data.map(r => pct(r.skipped, r.total)),    stroke: 'rgba(139,148,158,0.7)', dot: 'var(--text-muted)', width: 1   },
+    { key: 'dnr',    vals: data.map(r => pct(Math.max(0, r.total - r.expected - r.unexpected - r.flaky - r.skipped), r.total)), stroke: 'rgba(100,110,125,0.5)', dot: 'var(--text-faint)', width: 1 },
   ]
 
   const labelStep = Math.max(1, Math.floor(n / 7))
+  const selectedRun = selectedIdx !== null ? data[selectedIdx] : null
+  const popupXPct = selectedIdx !== null ? (xPos(selectedIdx) / W) * 100 : 0
 
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
-      {/* Grid lines */}
-      {[100, 75, 50, 25, 0].map(v => (
-        <g key={v}>
-          <line x1={PAD.left} y1={yPos(v)} x2={PAD.left + cw} y2={yPos(v)} stroke="var(--border-subtle)" strokeWidth={v === 0 ? 1 : 0.5} strokeDasharray={v === 0 ? undefined : '3 3'} />
-          <text x={PAD.left - 6} y={yPos(v) + 4} textAnchor="end" fontSize={9} fill="var(--text-faint)">{v}%</text>
-        </g>
-      ))}
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+        {/* Grid lines */}
+        {[100, 75, 50, 25, 0].map(v => (
+          <g key={v}>
+            <line x1={PAD.left} y1={yPos(v)} x2={PAD.left + cw} y2={yPos(v)} stroke="var(--border-subtle)" strokeWidth={v === 0 ? 1 : 0.5} strokeDasharray={v === 0 ? undefined : '3 3'} />
+            <text x={PAD.left - 6} y={yPos(v) + 4} textAnchor="end" fontSize={9} fill="var(--text-faint)">{v}%</text>
+          </g>
+        ))}
 
-      {/* Lines — render passed last so it's on top */}
-      {[...series].reverse().map(s => (
-        <polyline
-          key={s.key}
-          points={s.vals.map((v, i) => `${xPos(i)},${yPos(v)}`).join(' ')}
-          fill="none"
-          stroke={s.stroke}
-          strokeWidth={s.width}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      ))}
+        {/* Lines — render passed last so it's on top */}
+        {[...series].reverse().map(s => (
+          <polyline
+            key={s.key}
+            points={s.vals.map((v, i) => `${xPos(i)},${yPos(v)}`).join(' ')}
+            fill="none"
+            stroke={s.stroke}
+            strokeWidth={s.width}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        ))}
 
-      {/* Dots on each line */}
-      {series.flatMap(s => s.vals.map((v, i) => (
-        <circle
-          key={`${s.key}-${i}`}
-          cx={xPos(i)} cy={yPos(v)}
-          r={2.5}
-          fill={s.dot}
-          stroke="var(--bg-2)" strokeWidth={1.5}
-        />
-      )))}
+        {/* Dots on each line */}
+        {series.flatMap(s => s.vals.map((v, i) => (
+          <circle
+            key={`${s.key}-${i}`}
+            cx={xPos(i)} cy={yPos(v)}
+            r={selectedIdx === i ? 3.5 : 2.5}
+            fill={s.dot}
+            stroke={selectedIdx === i ? 'var(--text-primary)' : 'var(--bg-2)'}
+            strokeWidth={selectedIdx === i ? 1 : 1.5}
+          />
+        )))}
 
-      {/* X-axis time labels */}
-      {data.map((run, i) => {
-        if (i % labelStep !== 0 && i !== n - 1) return null
-        const d = new Date(run.started_at)
-        const label = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}h`
-        return (
-          <text key={run.id} x={xPos(i)} y={H - 4} textAnchor="middle" fontSize={9} fill="var(--text-faint)">
-            {label}
-          </text>
-        )
-      })}
-    </svg>
+        {/* Selected run vertical line */}
+        {selectedIdx !== null && (
+          <line
+            x1={xPos(selectedIdx)} y1={PAD.top}
+            x2={xPos(selectedIdx)} y2={PAD.top + ch}
+            stroke="var(--text-muted)" strokeWidth={0.5} strokeDasharray="3 3"
+          />
+        )}
+
+        {/* X-axis time labels */}
+        {data.map((run, i) => {
+          if (i % labelStep !== 0 && i !== n - 1) return null
+          const d = new Date(run.started_at)
+          const label = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}h`
+          return (
+            <text key={run.id} x={xPos(i)} y={H - 4} textAnchor="middle" fontSize={9} fill="var(--text-faint)">
+              {label}
+            </text>
+          )
+        })}
+
+        {/* Click hit strips — transparent rects, one per run */}
+        {data.map((_, i) => (
+          <rect
+            key={`hit-${i}`}
+            x={xPos(i) - hitW / 2}
+            y={PAD.top}
+            width={hitW}
+            height={ch}
+            fill="transparent"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setSelectedIdx(selectedIdx === i ? null : i)}
+          />
+        ))}
+      </svg>
+
+      {/* Run detail popup */}
+      {selectedRun && (
+        <div style={{
+          position: 'absolute',
+          bottom: 32,
+          left: `${Math.min(Math.max(popupXPct, 5), 72)}%`,
+          transform: 'translateX(-50%)',
+          background: 'var(--bg-1)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 8,
+          padding: '10px 14px',
+          fontSize: 11,
+          zIndex: 50,
+          minWidth: 210,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          pointerEvents: 'none',
+        }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: selectedRun.unexpected > 0 ? 'var(--red)' : 'var(--green)', flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 12, color: selectedRun.unexpected > 0 ? 'var(--red)' : 'var(--green)' }}>
+              {selectedRun.unexpected > 0 ? 'FAILED' : 'PASSED'}
+            </span>
+            <RunTypeBadge runType={selectedRun.run_type} />
+          </div>
+          {/* Counts */}
+          {[
+            { label: 'Passed',  val: selectedRun.expected,   color: 'var(--green)' },
+            { label: 'Failed',  val: selectedRun.unexpected, color: 'var(--red)' },
+            { label: 'Flaky',   val: selectedRun.flaky,      color: 'var(--yellow)' },
+            { label: 'Skipped', val: selectedRun.skipped,    color: 'var(--text-muted)' },
+          ].map(({ label, val, color }) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+              <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+              <span style={{ fontWeight: 600, color, fontVariantNumeric: 'tabular-nums' }}>{val}</span>
+            </div>
+          ))}
+          {/* Meta */}
+          <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+            <span>{fmtDuration(selectedRun.duration_sec)}</span>
+            <span>{new Date(selectedRun.started_at).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          {selectedRun.report_url && (
+            <div style={{ marginTop: 6, pointerEvents: 'auto' }}>
+              <a href={selectedRun.report_url} target="_blank" rel="noopener" style={{ fontSize: 10, color: 'var(--accent-text)', textDecoration: 'none' }}>
+                View report →
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -190,6 +284,7 @@ export default function Dashboard() {
   const [matrix, setMatrix] = useState<MatrixRow[]>([])
   const [flaky, setFlaky] = useState<FlakyItem[]>([])
   const [slowest, setSlowest] = useState<SlowestItem[]>([])
+  const [moduleStats, setModuleStats] = useState<ModuleStat[]>([])
   const [detailFile, setDetailFile] = useState<string | null>(null)
   const [preset, setPreset] = useState<'today' | '7d' | '14d' | '30d' | 'all'>('30d')
 
@@ -213,19 +308,27 @@ export default function Dashboard() {
     setLoading(true)
     try {
       const from = presetFrom(preset)
-      const runsUrl = from
-        ? `/api/test-runs?limit=500&from=${encodeURIComponent(from)}`
-        : '/api/test-runs?limit=500'
-      const [runsRes, matrixRes, flakyRes, slowestRes] = await Promise.all([
+      const fromParam = from ? `&from=${encodeURIComponent(from)}` : ''
+      const presetDays: Record<typeof preset, number> = { today: 1, '7d': 7, '14d': 14, '30d': 30, all: 365 }
+      const flakyDays = presetDays[preset]
+
+      const runsUrl = `/api/test-runs?limit=500${fromParam}`
+      const matrixUrl = `/api/test-stats?type=journey-matrix${fromParam}`
+      const flakyUrl = `/api/test-stats?type=flaky&days=${flakyDays}`
+      const moduleUrl = `/api/test-stats?type=module-stats${fromParam}`
+
+      const [runsRes, matrixRes, flakyRes, slowestRes, moduleRes] = await Promise.all([
         fetch(runsUrl),
-        fetch('/api/test-stats?type=journey-matrix&runs=30'),
-        fetch('/api/test-stats?type=flaky&days=30'),
+        fetch(matrixUrl),
+        fetch(flakyUrl),
         fetch('/api/test-stats?type=slowest'),
+        fetch(moduleUrl),
       ])
       if (runsRes.ok) setRuns(await runsRes.json())
       if (matrixRes.ok) setMatrix(await matrixRes.json())
       if (flakyRes.ok) setFlaky(await flakyRes.json())
       if (slowestRes.ok) setSlowest(await slowestRes.json())
+      if (moduleRes.ok) setModuleStats(await moduleRes.json())
       setLastRefresh(new Date())
     } finally {
       setLoading(false)
@@ -462,9 +565,15 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Module Health */}
+        <div style={card}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 16 }}>Module Health · {periodLabel}</div>
+          <ModuleHealthGrid data={moduleStats} />
+        </div>
+
         {/* Journey Health Matrix */}
         <div style={card}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 16 }}>Journey Health Matrix · Last 30 Runs</div>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 16 }}>Journey Health Matrix · {periodLabel}</div>
           <JourneyMatrix
             title="UI Journeys"
             rows={matrix.filter(r => r.test_file.startsWith('journeys/'))}
@@ -491,7 +600,7 @@ export default function Dashboard() {
         {/* Flaky leaderboard + Slowest tests */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
           <div style={card}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Flaky Leaderboard · 30 Days</div>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Flaky Leaderboard · {periodLabel}</div>
             <FlakyLeaderboard data={flaky} />
           </div>
           <div style={card}>
@@ -528,19 +637,22 @@ export default function Dashboard() {
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Recent Runs</div>
           {runs.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 60px', gap: 8, padding: '0 4px 6px', borderBottom: '1px solid var(--border-subtle)', marginBottom: 4 }}>
-                {['Status', 'Build', 'Pass', 'Fail', 'Time'].map(h => (
+              <div style={{ display: 'grid', gridTemplateColumns: '80px 100px 1fr 60px 60px 60px', gap: 8, padding: '0 4px 6px', borderBottom: '1px solid var(--border-subtle)', marginBottom: 4 }}>
+                {['Status', 'Type', 'Build', 'Pass', 'Fail', 'Time'].map(h => (
                   <span key={h} style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.4, textTransform: 'uppercase' }}>{h}</span>
                 ))}
               </div>
               {runs.slice(0, 12).map(run => (
-                <div key={run.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 60px', gap: 8, padding: '5px 4px', borderRadius: 5, cursor: 'default' }}
+                <div key={run.id} style={{ display: 'grid', gridTemplateColumns: '80px 100px 1fr 60px 60px 60px', gap: 8, padding: '5px 4px', borderRadius: 5, cursor: 'default' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: run.unexpected > 0 ? 'var(--red)' : 'var(--green)', flexShrink: 0 }} />
                     <span style={{ fontSize: 10, color: run.unexpected > 0 ? 'var(--red)' : 'var(--green)', fontWeight: 500 }}>{run.unexpected > 0 ? 'FAIL' : 'PASS'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <RunTypeBadge runType={run.run_type} />
                   </div>
                   <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={run.build_id}>
                     {run.report_url

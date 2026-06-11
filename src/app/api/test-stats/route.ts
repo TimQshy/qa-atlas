@@ -6,6 +6,7 @@ export async function GET(request: Request) {
   const type = searchParams.get('type')
   const days = parseInt(searchParams.get('days') ?? '30')
   const runs = parseInt(searchParams.get('runs') ?? '10')
+  const from = searchParams.get('from')
 
   const supabase = getAdminClient()
 
@@ -75,12 +76,13 @@ export async function GET(request: Request) {
   }
 
   if (type === 'journey-matrix') {
-    // Get last N run IDs ordered by date
-    const { data: runRows, error: runError } = await supabase
+    let runQuery = supabase
       .from('test_runs')
       .select('id, started_at')
       .order('started_at', { ascending: false })
-      .limit(runs)
+    if (from) runQuery = runQuery.gte('started_at', from)
+    else runQuery = runQuery.limit(runs)
+    const { data: runRows, error: runError } = await runQuery
 
     if (runError) return NextResponse.json({ error: runError.message }, { status: 500 })
 
@@ -195,5 +197,76 @@ export async function GET(request: Request) {
     })
   }
 
-  return NextResponse.json({ error: 'type must be flaky | slowest | journey-matrix | journey-detail' }, { status: 400 })
+  if (type === 'module-stats') {
+    let runQuery = supabase
+      .from('test_runs')
+      .select('id, started_at')
+      .order('started_at', { ascending: false })
+    if (from) runQuery = runQuery.gte('started_at', from)
+    else runQuery = runQuery.limit(runs)
+    const { data: runRows, error: runError } = await runQuery
+
+    if (runError) return NextResponse.json({ error: runError.message }, { status: 500 })
+
+    const runIds = (runRows ?? []).map(r => r.id)
+    if (runIds.length === 0) return NextResponse.json([])
+
+    const { data: testRows, error: testError } = await supabase
+      .from('test_run_tests')
+      .select('run_id, module, status')
+      .in('run_id', runIds)
+      .not('module', 'is', null)
+
+    if (testError) return NextResponse.json({ error: testError.message }, { status: 500 })
+
+    const moduleMap = new Map<string, Map<string, { pass: number; fail: number; flaky: number; skip: number }>>()
+
+    for (const row of testRows ?? []) {
+      if (!row.module) continue
+      if (!moduleMap.has(row.module)) moduleMap.set(row.module, new Map())
+      const runMap = moduleMap.get(row.module)!
+      if (!runMap.has(row.run_id)) runMap.set(row.run_id, { pass: 0, fail: 0, flaky: 0, skip: 0 })
+      const c = runMap.get(row.run_id)!
+      if (row.status === 'passed') c.pass++
+      else if (row.status === 'failed') c.fail++
+      else if (row.status === 'flaky') c.flaky++
+      else if (row.status === 'skipped') c.skip++
+    }
+
+    const runMeta = Object.fromEntries((runRows ?? []).map(r => [r.id, r.started_at]))
+
+    const result = [...moduleMap.entries()].map(([module, runMap]) => {
+      // runIds is newest-first; build per-run stats in that order
+      const runsData = runIds
+        .filter(rid => runMap.has(rid))
+        .map(rid => {
+          const c = runMap.get(rid)!
+          const total = c.pass + c.fail + c.flaky + c.skip
+          return {
+            run_id: rid,
+            started_at: runMeta[rid],
+            pass: c.pass, fail: c.fail, flaky: c.flaky, total,
+            pass_rate: total > 0 ? (c.pass / total) * 100 : 100,
+          }
+        })
+
+      const lastRun = runsData[0]
+      const avgPassRate = runsData.length > 0
+        ? runsData.reduce((s, r) => s + r.pass_rate, 0) / runsData.length
+        : 100
+
+      return {
+        module,
+        avg_pass_rate: Math.round(avgPassRate * 10) / 10,
+        last_pass_rate: lastRun ? Math.round(lastRun.pass_rate * 10) / 10 : null,
+        last_fail: lastRun?.fail ?? 0,
+        last_flaky: lastRun?.flaky ?? 0,
+        runs: [...runsData].reverse(), // oldest → newest for sparkline
+      }
+    }).sort((a, b) => a.module.localeCompare(b.module))
+
+    return NextResponse.json(result)
+  }
+
+  return NextResponse.json({ error: 'type must be flaky | slowest | journey-matrix | journey-detail | module-stats' }, { status: 400 })
 }

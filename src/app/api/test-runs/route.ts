@@ -5,6 +5,7 @@ interface TestPayload {
   testFile: string
   testSuite?: string
   testName: string
+  module?: string
   status: 'passed' | 'failed' | 'flaky' | 'skipped'
   durationMs?: number
   retryCount?: number
@@ -26,6 +27,7 @@ interface TestRunPayload {
   hardFailRate: number
   flakyRate: number
   reportUrl?: string
+  runType?: string
   tests?: TestPayload[]
 }
 
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
   const body: TestRunPayload = await request.json()
   const { date, startedAt, buildId, expected = 0, unexpected = 0, flaky = 0, skipped = 0,
     total = 0, durationSec = 0, hardFailTests = [], isInfraFailure = false,
-    hardFailRate = 0, flakyRate = 0, reportUrl, tests } = body
+    hardFailRate = 0, flakyRate = 0, reportUrl, runType, tests } = body
 
   if (!buildId || (!date && !startedAt)) {
     return NextResponse.json({ error: 'buildId and date/startedAt are required' }, { status: 400 })
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
       hard_fail_rate: hardFailRate,
       flaky_rate: flakyRate,
       report_url: reportUrl ?? null,
+      run_type: runType ?? null,
     })
     .select()
     .single()
@@ -75,6 +78,7 @@ export async function POST(request: Request) {
       test_file: t.testFile,
       test_suite: t.testSuite ?? null,
       test_name: t.testName,
+      module: t.module ?? null,
       status: t.status,
       duration_ms: t.durationMs ?? null,
       retry_count: t.retryCount ?? 0,

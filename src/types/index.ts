@@ -65,11 +65,21 @@ export interface TestRunTest {
   test_file: string
   test_suite?: string | null
   test_name: string
+  module?: string | null
   status: 'passed' | 'failed' | 'flaky' | 'skipped'
   duration_ms?: number | null
   retry_count: number
   error_message?: string | null
   created_at: string
+}
+
+export interface ModuleStat {
+  module: string
+  avg_pass_rate: number
+  last_pass_rate: number | null
+  last_fail: number
+  last_flaky: number
+  runs: { run_id: string; started_at: string; pass: number; fail: number; flaky: number; total: number; pass_rate: number }[]
 }
 
 export interface TestRun {
@@ -87,6 +97,7 @@ export interface TestRun {
   hard_fail_rate: number
   flaky_rate: number
   report_url?: string | null
+  run_type?: string | null
   created_at: string
   tests?: TestRunTest[]
 }
