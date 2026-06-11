@@ -6,6 +6,77 @@ interface Props {
   data: ModuleStat[]
 }
 
+// Maps raw module/file names → semantic group
+const MODULE_GROUP: Record<string, string> = {}
+const PATTERNS: [RegExp, string][] = [
+  [/^auth|^api-auth/,                          'auth'],
+  [/^contact|^merge-records|^find-duplicates/, 'contacts'],
+  [/^event|^appointment/,                      'events'],
+  [/^student|^defer-student|^merge-students/,  'students'],
+  [/^application|^apply-form/,                 'applications'],
+  [/^form|^lead-score|^edit-sign-up|^webform/, 'forms'],
+  [/^school|^admin|^multi-role/,               'admin'],
+  [/^activity/,                                'activity-log'],
+  [/^can-deactivate/,                          'navigation'],
+  [/^analytics/,                               'analytics'],
+  [/^communication/,                           'communications'],
+  [/^cross-cutting/,                           'cross-cutting'],
+  [/^task/,                                    'tasks'],
+  [/^dashboard/,                               'dashboard'],
+  [/^file-upload/,                             'file-uploads'],
+  [/^entit/,                                   'entities'],
+  [/^enquir/,                                  'enquiries'],
+]
+
+function toGroup(raw: string): string {
+  if (MODULE_GROUP[raw]) return MODULE_GROUP[raw]
+  const name = raw
+    .replace(/\.journey\.spec\.ts$/, '')
+    .replace(/\.spec\.ts$/, '')
+    .replace(/\.setup\.ts$/, '')
+    .replace(/\.teardown\.ts$/, '')
+  for (const [re, group] of PATTERNS) {
+    if (re.test(name)) { MODULE_GROUP[raw] = group; return group }
+  }
+  MODULE_GROUP[raw] = name
+  return name
+}
+
+function groupStats(data: ModuleStat[]): ModuleStat[] {
+  const map = new Map<string, ModuleStat>()
+  for (const stat of data) {
+    const group = toGroup(stat.module)
+    const existing = map.get(group)
+    if (!existing) {
+      map.set(group, { ...stat, module: group })
+      continue
+    }
+    // Merge runs: combine by run_id, sum pass/fail/flaky/total
+    const runMap = new Map(existing.runs.map(r => [r.run_id, { ...r }]))
+    for (const r of stat.runs) {
+      const ex = runMap.get(r.run_id)
+      if (ex) {
+        ex.pass += r.pass; ex.fail += r.fail; ex.flaky += r.flaky; ex.total += r.total
+        ex.pass_rate = ex.total > 0 ? (ex.pass / ex.total) * 100 : 100
+      } else {
+        runMap.set(r.run_id, { ...r })
+      }
+    }
+    const merged = [...runMap.values()].sort((a, b) => a.started_at < b.started_at ? -1 : 1)
+    const lastRun = merged[merged.length - 1]
+    const avg = merged.reduce((s, r) => s + r.pass_rate, 0) / merged.length
+    map.set(group, {
+      module: group,
+      avg_pass_rate: Math.round(avg * 10) / 10,
+      last_pass_rate: lastRun ? Math.round(lastRun.pass_rate * 10) / 10 : null,
+      last_fail: lastRun?.fail ?? 0,
+      last_flaky: lastRun?.flaky ?? 0,
+      runs: merged,
+    })
+  }
+  return [...map.values()].sort((a, b) => a.module.localeCompare(b.module))
+}
+
 function rateColor(rate: number) {
   if (rate >= 90) return 'var(--green)'
   if (rate >= 70) return 'var(--yellow)'
@@ -46,8 +117,7 @@ function Sparkline({ runs }: { runs: ModuleStat['runs'] }) {
 function ModuleCard({ stat }: { stat: ModuleStat }) {
   const rate = stat.last_pass_rate ?? stat.avg_pass_rate
   const color = rateColor(rate)
-  const [prefix, ...rest] = stat.module.split('-')
-  const label = rest.join('-') || stat.module
+  const label = stat.module
 
   return (
     <div style={{
@@ -62,10 +132,7 @@ function ModuleCard({ stat }: { stat: ModuleStat }) {
     }}>
       {/* Module name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 9, color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-          {prefix}
-        </span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={stat.module}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={stat.module}>
           {label}
         </span>
       </div>
@@ -113,7 +180,9 @@ function ModuleCard({ stat }: { stat: ModuleStat }) {
 }
 
 export default function ModuleHealthGrid({ data }: Props) {
-  if (data.length === 0) {
+  const grouped = groupStats(data)
+
+  if (grouped.length === 0) {
     return (
       <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>
         No module data yet — tag your tests with a <code style={{ fontSize: 11, background: 'var(--bg-3)', padding: '1px 5px', borderRadius: 3 }}>module</code> field when posting to <code style={{ fontSize: 11, background: 'var(--bg-3)', padding: '1px 5px', borderRadius: 3 }}>/api/test-runs</code>.
@@ -127,7 +196,7 @@ export default function ModuleHealthGrid({ data }: Props) {
       gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
       gap: 10,
     }}>
-      {data.map(stat => (
+      {grouped.map(stat => (
         <ModuleCard key={stat.module} stat={stat} />
       ))}
     </div>
