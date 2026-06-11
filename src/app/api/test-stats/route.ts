@@ -5,7 +5,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type')
   const days = parseInt(searchParams.get('days') ?? '30')
-  const runs = parseInt(searchParams.get('runs') ?? '10')
+  const runsParam = searchParams.get('runs')
+  const runs = runsParam ? parseInt(runsParam) : null
   const from = searchParams.get('from')
 
   const supabase = getAdminClient()
@@ -81,7 +82,7 @@ export async function GET(request: Request) {
       .select('id, started_at')
       .order('started_at', { ascending: false })
     if (from) runQuery = runQuery.gte('started_at', from)
-    else runQuery = runQuery.limit(runs)
+    else if (runs) runQuery = runQuery.limit(runs)
     const { data: runRows, error: runError } = await runQuery
 
     if (runError) return NextResponse.json({ error: runError.message }, { status: 500 })
@@ -136,7 +137,7 @@ export async function GET(request: Request) {
       .from('test_runs')
       .select('id, started_at')
       .order('started_at', { ascending: false })
-      .limit(runs)
+      .limit(runs ?? 10)
 
     if (runError) return NextResponse.json({ error: runError.message }, { status: 500 })
 
@@ -208,7 +209,7 @@ export async function GET(request: Request) {
       .select('id, started_at')
       .order('started_at', { ascending: false })
     if (from) runQuery = runQuery.gte('started_at', from)
-    else runQuery = runQuery.limit(runs)
+    else if (runs) runQuery = runQuery.limit(runs)
     const { data: runRows, error: runError } = await runQuery
 
     if (runError) return NextResponse.json({ error: runError.message }, { status: 500 })

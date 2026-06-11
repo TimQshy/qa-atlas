@@ -304,10 +304,10 @@ export default function Dashboard() {
       const runsUrl = `/api/test-runs?limit=500${fromParam}`
       const matrixUrl = from
         ? `/api/test-stats?type=journey-matrix&from=${encodeURIComponent(from)}`
-        : `/api/test-stats?type=journey-matrix&runs=500`
+        : `/api/test-stats?type=journey-matrix`
       const moduleUrl = from
         ? `/api/test-stats?type=module-stats&from=${encodeURIComponent(from)}`
-        : `/api/test-stats?type=module-stats&runs=500`
+        : `/api/test-stats?type=module-stats`
       const flakyUrl = `/api/test-stats?type=flaky&days=${flakyDays}${fromParam}`
       const failedUrl = `/api/test-stats?type=failed-tests&days=${flakyDays}${fromParam}`
 
