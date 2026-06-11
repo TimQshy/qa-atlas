@@ -74,7 +74,7 @@ export default function JourneyMatrix({ title, rows, onRowClick }: Props) {
   const colTemplate = `minmax(180px, 220px) repeat(${runCount}, ${CELL}px)`
 
   return (
-    <div>
+    <div style={{ overflow: 'hidden' }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: 0.2 }}>
         {title}
       </div>
@@ -88,7 +88,7 @@ export default function JourneyMatrix({ title, rows, onRowClick }: Props) {
 
         <div
           ref={scrollRef}
-          style={{ overflowX: 'auto', scrollBehavior: 'smooth' }}
+          style={{ overflowX: 'auto', scrollBehavior: 'smooth', width: '100%' }}
           onScroll={e => updateScrollState(e.currentTarget)}
         >
           <div style={{ display: 'grid', gridTemplateColumns: colTemplate, gap: 3, minWidth: 0 }}>
