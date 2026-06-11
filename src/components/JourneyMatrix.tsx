@@ -81,10 +81,6 @@ export default function JourneyMatrix({ title, rows, onRowClick }: Props) {
 
       {/* Scroll container */}
       <div style={{ position: 'relative' }}>
-        {/* Left fade */}
-        {canScrollLeft && (
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 40, background: 'linear-gradient(to right, var(--bg-2), transparent)', zIndex: 2, pointerEvents: 'none' }} />
-        )}
         {/* Right fade */}
         {canScrollRight && (
           <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 40, background: 'linear-gradient(to left, var(--bg-2), transparent)', zIndex: 2, pointerEvents: 'none' }} />
@@ -97,7 +93,7 @@ export default function JourneyMatrix({ title, rows, onRowClick }: Props) {
         >
           <div style={{ display: 'grid', gridTemplateColumns: colTemplate, gap: 3, minWidth: 0 }}>
             {/* Header: oldest → newest (left → right) */}
-            <div style={{ fontSize: 9, color: 'var(--text-faint)', paddingBottom: 4 }} />
+            <div style={{ position: 'sticky', left: 0, zIndex: 2, background: 'var(--bg-2)', fontSize: 9, color: 'var(--text-faint)', paddingBottom: 4 }} />
             {displayRows[0].runs.map(r => (
               <div key={r.run_id} style={{ fontSize: 9, color: 'var(--text-faint)', textAlign: 'center', paddingBottom: 4, writingMode: 'vertical-rl', transform: 'rotate(180deg)', height: 32, lineHeight: 1 }}>
                 {shortDate(r.started_at)}
@@ -110,9 +106,9 @@ export default function JourneyMatrix({ title, rows, onRowClick }: Props) {
                 <div
                   key={`label-${row.test_file}`}
                   onClick={() => onRowClick(row.test_file)}
-                  style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', padding: '4px 6px', borderRadius: 4, lineHeight: `${CELL}px` }}
+                  style={{ position: 'sticky', left: 0, zIndex: 1, background: 'var(--bg-2)', fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', padding: '4px 6px', borderRadius: 4, lineHeight: `${CELL}px` }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-2)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                   title={row.test_file}
                 >
                   {basename(row.test_file)}
