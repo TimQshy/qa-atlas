@@ -96,6 +96,11 @@ export async function GET(request: Request) {
 
     if (testError) return NextResponse.json({ error: testError.message }, { status: 500 })
 
+    // Only include runs that actually have test data
+    const runsWithData = new Set((testRows ?? []).map(r => r.run_id))
+    const filteredRunIds = runIds.filter(id => runsWithData.has(id))
+    if (filteredRunIds.length === 0) return NextResponse.json([])
+
     // Build matrix: per test_file, per run_id → worst status
     const statusRank: Record<string, number> = { failed: 0, flaky: 1, skipped: 2, passed: 3 }
     const matrix = new Map<string, Map<string, string>>()
@@ -113,7 +118,7 @@ export async function GET(request: Request) {
 
     const result = [...matrix.entries()].map(([test_file, runMap]) => ({
       test_file,
-      runs: runIds.map(rid => ({
+      runs: filteredRunIds.map(rid => ({
         run_id: rid,
         started_at: runMeta[rid],
         status: (runMap.get(rid) ?? 'not_run') as string,
