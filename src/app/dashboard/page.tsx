@@ -574,27 +574,31 @@ export default function Dashboard() {
         {/* Journey Health Matrix */}
         <div style={card}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 16 }}>Journey Health Matrix · {periodLabel}</div>
-          <JourneyMatrix
-            title="UI Journeys"
-            rows={matrix.filter(r => r.test_file.startsWith('journeys/'))}
-            onRowClick={setDetailFile}
-          />
-          {matrix.some(r => r.test_file.startsWith('api/')) && (
-            <div style={{ marginTop: 20 }}>
-              <JourneyMatrix
-                title="API Tests"
-                rows={matrix.filter(r => r.test_file.startsWith('api/'))}
-                onRowClick={setDetailFile}
-              />
-            </div>
-          )}
-          {matrix.length > 0 && !matrix.some(r => r.test_file.startsWith('journeys/') || r.test_file.startsWith('api/')) && (
-            <JourneyMatrix
-              title="All Tests"
-              rows={matrix}
-              onRowClick={setDetailFile}
-            />
-          )}
+          {(() => {
+            const journeyRows = matrix.filter(r => r.test_file.includes('/journeys/') || r.test_file.includes('journey.spec'))
+            const apiRows = matrix.filter(r => r.test_file.includes('/api/') || r.test_file.includes('-api.spec'))
+            const otherRows = matrix.filter(r => !journeyRows.includes(r) && !apiRows.includes(r))
+            const hasJourneys = journeyRows.length > 0
+            const hasApi = apiRows.length > 0
+            if (!hasJourneys && !hasApi) {
+              return <JourneyMatrix title="All Tests" rows={matrix} onRowClick={setDetailFile} />
+            }
+            return (
+              <>
+                {hasJourneys && <JourneyMatrix title="UI Journeys" rows={journeyRows} onRowClick={setDetailFile} />}
+                {hasApi && (
+                  <div style={{ marginTop: 20 }}>
+                    <JourneyMatrix title="API Tests" rows={apiRows} onRowClick={setDetailFile} />
+                  </div>
+                )}
+                {otherRows.length > 0 && (
+                  <div style={{ marginTop: 20 }}>
+                    <JourneyMatrix title="Other" rows={otherRows} onRowClick={setDetailFile} />
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </div>
 
         {/* Flaky leaderboard + Slowest tests */}
