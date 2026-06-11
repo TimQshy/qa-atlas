@@ -302,10 +302,14 @@ export default function Dashboard() {
       const flakyDays = presetDays[preset]
 
       const runsUrl = `/api/test-runs?limit=500${fromParam}`
-      const matrixUrl = `/api/test-stats?type=journey-matrix${fromParam}`
+      const matrixUrl = from
+        ? `/api/test-stats?type=journey-matrix&from=${encodeURIComponent(from)}`
+        : `/api/test-stats?type=journey-matrix&runs=500`
+      const moduleUrl = from
+        ? `/api/test-stats?type=module-stats&from=${encodeURIComponent(from)}`
+        : `/api/test-stats?type=module-stats&runs=500`
       const flakyUrl = `/api/test-stats?type=flaky&days=${flakyDays}${fromParam}`
       const failedUrl = `/api/test-stats?type=failed-tests&days=${flakyDays}${fromParam}`
-      const moduleUrl = `/api/test-stats?type=module-stats${fromParam}`
 
       const [runsRes, matrixRes, flakyRes, failedRes, slowestRes, moduleRes] = await Promise.all([
         fetch(runsUrl),
