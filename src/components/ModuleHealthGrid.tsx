@@ -118,11 +118,6 @@ function ModuleCard({ stat, active, onClick }: { stat: ModuleStat; active: boole
         <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, color, lineHeight: 1 }}>
           {rate.toFixed(1)}%
         </span>
-        {stat.last_pass_rate !== null && Math.abs(stat.last_pass_rate - stat.avg_pass_rate) > 1 && (
-          <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>
-            avg {stat.avg_pass_rate.toFixed(1)}%
-          </span>
-        )}
       </div>
 
       {/* Fail / flaky chips */}
