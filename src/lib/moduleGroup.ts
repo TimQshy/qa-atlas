@@ -1,4 +1,5 @@
 const cache: Record<string, string> = {}
+export function clearGroupCache() { Object.keys(cache).forEach(k => delete cache[k]) }
 
 const PATTERNS: [RegExp, string][] = [
   [/^auth|^api-auth/,                          'auth'],
@@ -23,6 +24,8 @@ const PATTERNS: [RegExp, string][] = [
 export function toGroup(raw: string): string {
   if (cache[raw]) return cache[raw]
   const name = raw
+    .replace(/^.*\//, '')           // strip directory path (e.g. ../api/ or fixtures/)
+    .replace(/-api$/, '')           // strip trailing -api suffix
     .replace(/\.journey\.spec\.ts$/, '')
     .replace(/\.spec\.ts$/, '')
     .replace(/\.setup\.ts$/, '')

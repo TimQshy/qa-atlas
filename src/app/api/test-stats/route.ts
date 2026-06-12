@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAdminClient } from '@/lib/supabase-admin'
+import { toGroup } from '@/lib/moduleGroup'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -216,9 +217,8 @@ export async function GET(request: Request) {
 
     const { data: testRows, error: testError } = await supabase
       .from('test_run_tests')
-      .select('run_id, module, status')
+      .select('run_id, module, test_file, status')
       .in('run_id', runIds)
-      .not('module', 'is', null)
       .limit(200000)
 
     if (testError) return NextResponse.json({ error: testError.message }, { status: 500 })
@@ -226,9 +226,11 @@ export async function GET(request: Request) {
     const moduleMap = new Map<string, Map<string, { pass: number; fail: number; flaky: number; skip: number }>>()
 
     for (const row of testRows ?? []) {
-      if (!row.module) continue
-      if (!moduleMap.has(row.module)) moduleMap.set(row.module, new Map())
-      const runMap = moduleMap.get(row.module)!
+      const rawModule = row.module ?? row.test_file
+      if (!rawModule) continue
+      const mod = toGroup(rawModule)
+      if (!moduleMap.has(mod)) moduleMap.set(mod, new Map())
+      const runMap = moduleMap.get(mod)!
       if (!runMap.has(row.run_id)) runMap.set(row.run_id, { pass: 0, fail: 0, flaky: 0, skip: 0 })
       const c = runMap.get(row.run_id)!
       if (row.status === 'passed') c.pass++
