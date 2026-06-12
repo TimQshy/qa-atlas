@@ -206,7 +206,7 @@ export async function GET(request: Request) {
       .select('id, started_at')
       .order('started_at', { ascending: false })
     if (from) runQuery = runQuery.gte('started_at', from)
-    else if (runs) runQuery = runQuery.limit(runs)
+    else runQuery = runQuery.limit(runs ?? 500)
     const { data: runRows, error: runError } = await runQuery
 
     if (runError) return NextResponse.json({ error: runError.message }, { status: 500 })
@@ -219,6 +219,7 @@ export async function GET(request: Request) {
       .select('run_id, module, status')
       .in('run_id', runIds)
       .not('module', 'is', null)
+      .limit(200000)
 
     if (testError) return NextResponse.json({ error: testError.message }, { status: 500 })
 
