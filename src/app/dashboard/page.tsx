@@ -263,7 +263,7 @@ function JourneyList({ title, rows, onRowClick }: { title: string; rows: MatrixR
       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: 0.2 }}>{title}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         {rows.map(row => {
-          const latest = row.runs[0]
+          const latest = row.runs.find(r => r.status !== 'not_run') ?? row.runs[0]
           const status = latest?.status ?? 'not_run'
           const color = STATUS_COLOR_MAP[status] ?? 'var(--bg-3)'
           const d = latest ? new Date(latest.started_at) : null
@@ -545,6 +545,7 @@ export default function Dashboard() {
   const [moduleFiles, setModuleFiles] = useState<Map<string, Set<string>>>(new Map())
   const [moduleDetail, setModuleDetail] = useState<string | null>(null)
   const [selectedFailedTest, setSelectedFailedTest] = useState<{ test_name: string; test_file: string } | null>(null)
+  const [runTypeFilter, setRunTypeFilter] = useState<string | null>(null)
 
   const PRESETS: { value: typeof preset; label: string }[] = [
     { value: 'today', label: 'Today' },
@@ -620,6 +621,10 @@ export default function Dashboard() {
     filteredMatrix = filteredMatrix.filter(r => r.test_file === journeyFilter)
   }
 
+  const filteredRuns = runTypeFilter
+    ? runs.filter(r => runTypeLabel(r.run_type) === runTypeFilter)
+    : runs
+
   const allJourneyFiles = matrix.map(r => r.test_file).sort()
   const allModuleGroups = [...new Set(moduleStats.map(s => toGroup(s.module)))].sort()
 
@@ -644,11 +649,11 @@ export default function Dashboard() {
     return [...map.values()]
   })()
 
-  const latest = runs[0]
-  const avgPassRate = runs.length
-    ? runs.reduce((s, r) => s + passRate(r), 0) / runs.length
+  const latest = filteredRuns[0]
+  const avgPassRate = filteredRuns.length
+    ? filteredRuns.reduce((s, r) => s + passRate(r), 0) / filteredRuns.length
     : null
-  const totalRunsFailed = runs.filter(r => r.unexpected > 0).length
+  const totalRunsFailed = filteredRuns.filter(r => r.unexpected > 0).length
   const periodLabel = PRESETS.find(p => p.value === preset)!.label
 
   return (
@@ -806,7 +811,7 @@ export default function Dashboard() {
                   {avgPassRate.toFixed(1)}%
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  {runs.length} runs · {totalRunsFailed} failed
+                  {filteredRuns.length} runs · {totalRunsFailed} failed
                 </div>
                 {/* Mini bar */}
                 <div style={{ marginTop: 10, height: 4, background: 'var(--bg-3)', borderRadius: 2, overflow: 'hidden' }}>
@@ -821,16 +826,16 @@ export default function Dashboard() {
           {/* Flaky stats */}
           <div style={card}>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 }}>Flaky · {periodLabel}</div>
-            {runs.length > 0 ? (
+            {filteredRuns.length > 0 ? (
               <>
                 <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: -1, color: 'var(--yellow)' }}>
-                  {runs.reduce((s, r) => s + r.flaky, 0)}
+                  {filteredRuns.reduce((s, r) => s + r.flaky, 0)}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
                   flaky test instances
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                  avg {(runs.reduce((s, r) => s + r.flaky_rate * 100, 0) / runs.length).toFixed(1)}% rate/run
+                  avg {(filteredRuns.reduce((s, r) => s + r.flaky_rate * 100, 0) / filteredRuns.length).toFixed(1)}% rate/run
                 </div>
               </>
             ) : (
@@ -846,9 +851,29 @@ export default function Dashboard() {
           <div style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <span style={{ fontSize: 12, fontWeight: 600 }}>Pass Rate Trend</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{runs.length} runs · {periodLabel}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Run type filter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 1, background: 'var(--bg-3)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: 2 }}>
+                  {[null, 'smoke', 'regression', 'sms-email'].map(rt => (
+                    <button
+                      key={rt ?? 'all'}
+                      onClick={() => setRunTypeFilter(rt)}
+                      style={{
+                        height: 20, padding: '0 8px', borderRadius: 4, fontSize: 10,
+                        fontWeight: runTypeFilter === rt ? 600 : 400,
+                        background: runTypeFilter === rt ? 'var(--bg-1)' : 'transparent',
+                        color: runTypeFilter === rt ? 'var(--text-primary)' : 'var(--text-faint)',
+                        cursor: 'pointer', border: 'none', transition: 'all .1s',
+                      }}
+                    >
+                      {rt ?? 'All'}
+                    </button>
+                  ))}
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{filteredRuns.length} runs · {periodLabel}</span>
+              </div>
             </div>
-            <PassRateChart runs={runs.slice(0, 60)} />
+            <PassRateChart runs={filteredRuns.slice(0, 60)} />
             <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
               {[
                 { color: 'var(--green)',     label: 'Passed' },
@@ -981,14 +1006,14 @@ export default function Dashboard() {
         {/* Recent runs */}
         <div style={card}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Recent Runs</div>
-          {runs.length > 0 ? (
+          {filteredRuns.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '80px 100px 1fr 60px 60px 60px', gap: 8, padding: '0 4px 6px', borderBottom: '1px solid var(--border-subtle)', marginBottom: 4 }}>
                 {['Status', 'Type', 'Build', 'Pass', 'Fail', 'Time'].map(h => (
                   <span key={h} style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.4, textTransform: 'uppercase' }}>{h}</span>
                 ))}
               </div>
-              {runs.slice(0, 12).map(run => (
+              {filteredRuns.slice(0, 12).map(run => (
                 <div key={run.id} style={{ display: 'grid', gridTemplateColumns: '80px 100px 1fr 60px 60px 60px', gap: 8, padding: '5px 4px', borderRadius: 5, cursor: 'default' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
