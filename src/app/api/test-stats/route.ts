@@ -292,5 +292,44 @@ export async function GET(request: Request) {
     return NextResponse.json(result)
   }
 
-  return NextResponse.json({ error: 'type must be flaky | failed-tests | slowest | journey-matrix | journey-detail | module-stats | module-files' }, { status: 400 })
+  if (type === 'test-failure-timeline') {
+    const testName = searchParams.get('testName')
+    if (!testName) return NextResponse.json({ error: 'testName required' }, { status: 400 })
+
+    const since = from ?? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+
+    const { data: testRows, error } = await supabase
+      .from('test_run_tests')
+      .select('run_id, status, created_at')
+      .eq('test_name', testName)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    const runIds = [...new Set((testRows ?? []).map(r => r.run_id))]
+    if (runIds.length === 0) return NextResponse.json([])
+
+    const { data: runRows, error: runError } = await supabase
+      .from('test_runs')
+      .select('id, started_at, run_type, report_url')
+      .in('id', runIds)
+
+    if (runError) return NextResponse.json({ error: runError.message }, { status: 500 })
+
+    const runMeta = Object.fromEntries((runRows ?? []).map(r => [r.id, r]))
+
+    const result = (testRows ?? []).map(row => ({
+      run_id: row.run_id,
+      started_at: runMeta[row.run_id]?.started_at ?? row.created_at,
+      status: row.status,
+      run_type: runMeta[row.run_id]?.run_type ?? null,
+      report_url: runMeta[row.run_id]?.report_url ?? null,
+    }))
+
+    return NextResponse.json(result)
+  }
+
+  return NextResponse.json({ error: 'type must be flaky | failed-tests | slowest | journey-matrix | journey-detail | module-stats | module-files | test-failure-timeline' }, { status: 400 })
 }

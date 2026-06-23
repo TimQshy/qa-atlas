@@ -249,7 +249,270 @@ function PassRateChart({ runs }: { runs: TestRun[] }) {
   )
 }
 
-// Top tests by failure frequency across last N runs
+// ─── Journey compact list (latest status per file) ───────────────────────────
+
+const STATUS_COLOR_MAP: Record<string, string> = {
+  passed: 'var(--green)', failed: 'var(--red)', flaky: 'var(--yellow)',
+  skipped: 'var(--text-faint)', not_run: 'var(--bg-3)',
+}
+
+function JourneyList({ title, rows, onRowClick }: { title: string; rows: MatrixRow[]; onRowClick: (f: string) => void }) {
+  if (rows.length === 0) return <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>No data — runs will appear here once CI sends data.</div>
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: 0.2 }}>{title}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {rows.map(row => {
+          const latest = row.runs[0]
+          const status = latest?.status ?? 'not_run'
+          const color = STATUS_COLOR_MAP[status] ?? 'var(--bg-3)'
+          const d = latest ? new Date(latest.started_at) : null
+          const dateLabel = d ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}h` : '—'
+          const file = row.test_file.split('/').pop() ?? row.test_file
+          return (
+            <div
+              key={row.test_file}
+              onClick={() => onRowClick(row.test_file)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 8px', borderRadius: 5, cursor: 'pointer' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: color, opacity: status === 'not_run' ? 0.35 : 0.88, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.test_file}>
+                {file}
+              </span>
+              <span style={{ fontSize: 10, color, fontWeight: 500, flexShrink: 0, opacity: status === 'not_run' ? 0.5 : 1 }}>
+                {status === 'not_run' ? '—' : status}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0, minWidth: 60, textAlign: 'right' }}>{dateLabel}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Module detail panel ──────────────────────────────────────────────────────
+
+function ModuleDetailPanel({ module, stat, files, onClose, onFileClick }: {
+  module: string | null
+  stat: ModuleStat | undefined
+  files: Set<string>
+  onClose: () => void
+  onFileClick: (f: string) => void
+}) {
+  if (!module) return null
+  const rate = stat ? (stat.last_pass_rate ?? stat.avg_pass_rate) : 0
+  const color = rate >= 90 ? 'var(--green)' : rate >= 70 ? 'var(--yellow)' : 'var(--red)'
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50 }} />
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(440px, 100vw)', background: 'var(--bg-1)', borderLeft: '1px solid var(--border-subtle)', zIndex: 51, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-sans)' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <button onClick={onClose} style={{ width: 24, height: 24, borderRadius: 5, border: '1px solid var(--border-default)', background: 'var(--bg-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-2)')}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color }}>{module}</div>
+            {stat && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{rate.toFixed(1)}% pass rate · {stat.runs.length} runs</div>}
+          </div>
+        </div>
+
+        {stat && stat.runs.length > 0 && (
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Run History</div>
+            <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              {stat.runs.map(r => {
+                const c = r.pass_rate >= 90 ? 'var(--green)' : r.pass_rate >= 70 ? 'var(--yellow)' : 'var(--red)'
+                return (
+                  <div key={r.run_id} title={`${r.pass_rate.toFixed(1)}% · ${new Date(r.started_at).toLocaleDateString()}`}
+                    style={{ width: 16, height: 16, borderRadius: 3, background: c, opacity: 0.8 }} />
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        <div style={{ flex: 1, overflow: 'auto', padding: '14px 20px' }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Test Files</div>
+          {files.size === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No test files mapped for this module yet.</div>
+          ) : (
+            [...files].sort().map(file => (
+              <div key={file} onClick={() => { onClose(); onFileClick(file) }}
+                style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer', marginBottom: 2 }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{file.split('/').pop()}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 1 }}>{file}</div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ─── Test failure timeline panel ──────────────────────────────────────────────
+
+interface TimelineEntry {
+  run_id: string
+  started_at: string
+  status: string
+  run_type: string | null
+  report_url: string | null
+}
+
+function TestFailurePanel({ test, onClose }: {
+  test: { test_name: string; test_file: string } | null
+  onClose: () => void
+}) {
+  const [data, setData] = useState<TimelineEntry[] | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!test) { setData(null); return }
+    setLoading(true)
+    setData(null)
+    fetch(`/api/test-stats?type=test-failure-timeline&testName=${encodeURIComponent(test.test_name)}&days=30`)
+      .then(r => r.json())
+      .then(d => setData(d))
+      .finally(() => setLoading(false))
+  }, [test?.test_name])
+
+  useEffect(() => {
+    if (!test) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [test, onClose])
+
+  if (!test) return null
+
+  const STATUS_DOT: Record<string, string> = {
+    passed: 'var(--green)', failed: 'var(--red)', flaky: 'var(--yellow)',
+    skipped: 'var(--text-faint)',
+  }
+
+  const W = 480, H = 80
+  const PAD = { top: 10, right: 16, bottom: 20, left: 16 }
+  const cw = W - PAD.left - PAD.right
+  const ch = H - PAD.top - PAD.bottom
+  const entries = data ? [...data].reverse() : []
+  const n = entries.length
+
+  const yForStatus = (s: string) => {
+    if (s === 'passed') return PAD.top + ch * 0.1
+    if (s === 'flaky') return PAD.top + ch * 0.4
+    return PAD.top + ch * 0.8
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50 }} />
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(520px, 100vw)', background: 'var(--bg-1)', borderLeft: '1px solid var(--border-subtle)', zIndex: 51, display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-sans)' }}>
+        {/* Header */}
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <button onClick={onClose} style={{ width: 24, height: 24, borderRadius: 5, border: '1px solid var(--border-default)', background: 'var(--bg-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-2)')}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={test.test_name}>{test.test_name}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{test.test_file.split('/').pop()} · last 30d</div>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
+          {loading && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading...</div>}
+
+          {!loading && data && data.length === 0 && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No run data found for this test in the last 30 days.</div>
+          )}
+
+          {!loading && data && data.length > 0 && (
+            <>
+              {/* Mini timeline chart */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Failure Timeline</div>
+                <div style={{ background: 'var(--bg-2)', borderRadius: 8, padding: '8px 0', overflow: 'hidden' }}>
+                  <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
+                    {/* Y labels */}
+                    {[
+                      { label: 'pass', y: yForStatus('passed') },
+                      { label: 'flaky', y: yForStatus('flaky') },
+                      { label: 'fail', y: yForStatus('failed') },
+                    ].map(({ label, y }) => (
+                      <text key={label} x={PAD.left - 2} y={y + 4} textAnchor="end" fontSize={8} fill="var(--text-faint)">{label}</text>
+                    ))}
+                    {/* Dots */}
+                    {entries.map((e, i) => {
+                      const x = n > 1 ? PAD.left + (i / (n - 1)) * cw : PAD.left + cw / 2
+                      const y = yForStatus(e.status)
+                      const c = STATUS_DOT[e.status] ?? 'var(--text-faint)'
+                      return (
+                        <circle key={e.run_id} cx={x} cy={y} r={4} fill={c} opacity={0.9}>
+                          <title>{`${e.status} · ${new Date(e.started_at).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}</title>
+                        </circle>
+                      )
+                    })}
+                    {/* X labels */}
+                    {entries.map((e, i) => {
+                      if (i % Math.max(1, Math.floor(n / 5)) !== 0 && i !== n - 1) return null
+                      const x = n > 1 ? PAD.left + (i / (n - 1)) * cw : PAD.left + cw / 2
+                      const d = new Date(e.started_at)
+                      return (
+                        <text key={`lbl-${e.run_id}`} x={x} y={H - 2} textAnchor="middle" fontSize={8} fill="var(--text-faint)">
+                          {`${d.getMonth()+1}/${d.getDate()}`}
+                        </text>
+                      )
+                    })}
+                  </svg>
+                </div>
+              </div>
+
+              {/* Runs table */}
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>All Runs</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {data.map(entry => {
+                  const c = STATUS_DOT[entry.status] ?? 'var(--text-faint)'
+                  const d = new Date(entry.started_at)
+                  return (
+                    <div key={entry.run_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', borderRadius: 5 }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: c, flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, color: c, fontWeight: 600, width: 50, flexShrink: 0 }}>{entry.status}</span>
+                      <span style={{ flex: 1, fontSize: 11, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                        {d.toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {entry.run_type && <RunTypeBadge runType={entry.run_type} />}
+                      {entry.report_url && (
+                        <a href={entry.report_url} target="_blank" rel="noopener" style={{ fontSize: 10, color: 'var(--accent-text)', textDecoration: 'none' }}>→</a>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const card: React.CSSProperties = {
   background: 'var(--bg-2)',
@@ -278,7 +541,10 @@ export default function Dashboard() {
   const [detailFile, setDetailFile] = useState<string | null>(null)
   const [preset, setPreset] = useState<'today' | '7d' | '14d' | '30d' | 'all'>('30d')
   const [selectedModule, setSelectedModule] = useState<string | null>(null)
+  const [journeyFilter, setJourneyFilter] = useState<string | null>(null)
   const [moduleFiles, setModuleFiles] = useState<Map<string, Set<string>>>(new Map())
+  const [moduleDetail, setModuleDetail] = useState<string | null>(null)
+  const [selectedFailedTest, setSelectedFailedTest] = useState<{ test_name: string; test_file: string } | null>(null)
 
   const PRESETS: { value: typeof preset; label: string }[] = [
     { value: 'today', label: 'Today' },
@@ -346,9 +612,37 @@ export default function Dashboard() {
 
   useEffect(() => { load() }, [load])
 
-  const filteredMatrix = selectedModule && moduleFiles.has(selectedModule)
-    ? matrix.filter(r => moduleFiles.get(selectedModule)!.has(r.test_file))
-    : matrix
+  let filteredMatrix = matrix
+  if (selectedModule && moduleFiles.has(selectedModule)) {
+    filteredMatrix = filteredMatrix.filter(r => moduleFiles.get(selectedModule)!.has(r.test_file))
+  }
+  if (journeyFilter) {
+    filteredMatrix = filteredMatrix.filter(r => r.test_file === journeyFilter)
+  }
+
+  const allJourneyFiles = matrix.map(r => r.test_file).sort()
+  const allModuleGroups = [...new Set(moduleStats.map(s => toGroup(s.module)))].sort()
+
+  // Grouped module stats (same logic as ModuleHealthGrid's groupStats)
+  const groupedModuleStats: ModuleStat[] = (() => {
+    const map = new Map<string, ModuleStat>()
+    for (const stat of moduleStats) {
+      const g = toGroup(stat.module)
+      const ex = map.get(g)
+      if (!ex) { map.set(g, { ...stat, module: g }); continue }
+      const runMap = new Map(ex.runs.map(r => [r.run_id, { ...r }]))
+      for (const r of stat.runs) {
+        const e = runMap.get(r.run_id)
+        if (e) { e.pass += r.pass; e.fail += r.fail; e.flaky += r.flaky; e.total += r.total; e.pass_rate = e.total > 0 ? (e.pass/e.total)*100 : 100 }
+        else runMap.set(r.run_id, { ...r })
+      }
+      const merged = [...runMap.values()].sort((a,b) => a.started_at < b.started_at ? -1 : 1)
+      const last = merged[merged.length-1]
+      const avg = merged.reduce((s,r) => s+r.pass_rate, 0) / merged.length
+      map.set(g, { module: g, avg_pass_rate: Math.round(avg*10)/10, last_pass_rate: last ? Math.round(last.pass_rate*10)/10 : null, last_fail: last?.fail??0, last_flaky: last?.flaky??0, runs: merged })
+    }
+    return [...map.values()]
+  })()
 
   const latest = runs[0]
   const avgPassRate = runs.length
@@ -399,6 +693,26 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
+
+        {/* Module filter dropdown */}
+        <select
+          value={selectedModule ?? ''}
+          onChange={e => setSelectedModule(e.target.value || null)}
+          style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-default)', background: selectedModule ? 'var(--accent-soft)' : 'var(--bg-2)', color: selectedModule ? 'var(--accent-text)' : 'var(--text-secondary)', fontSize: 11, cursor: 'pointer', outline: 'none' }}
+        >
+          <option value="">All modules</option>
+          {allModuleGroups.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+
+        {/* Journey filter dropdown */}
+        <select
+          value={journeyFilter ?? ''}
+          onChange={e => setJourneyFilter(e.target.value || null)}
+          style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-default)', background: journeyFilter ? 'var(--accent-soft)' : 'var(--bg-2)', color: journeyFilter ? 'var(--accent-text)' : 'var(--text-secondary)', fontSize: 11, cursor: 'pointer', outline: 'none', maxWidth: 180 }}
+        >
+          <option value="">All journeys</option>
+          {allJourneyFiles.map(f => <option key={f} value={f}>{f.split('/').pop()}</option>)}
+        </select>
 
         <div style={{ flex: 1 }} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', background: role === 'dev' ? 'rgba(59,130,246,0.12)' : 'var(--accent-soft)', border: `1px solid ${role === 'dev' ? 'rgba(59,130,246,0.3)' : 'var(--accent-border)'}`, color: role === 'dev' ? 'var(--blue)' : 'var(--accent-text)' }}>
@@ -560,7 +874,12 @@ export default function Dashboard() {
                   const maxCount = failedTests[0]?.flaky_count ?? 1
                   const barPct = (item.flaky_count / maxCount) * 100
                   return (
-                    <div key={`${item.test_file}::${item.test_name}`}>
+                    <div key={`${item.test_file}::${item.test_name}`}
+                      onClick={() => setSelectedFailedTest({ test_name: item.test_name, test_file: item.test_file })}
+                      style={{ cursor: 'pointer', borderRadius: 4, padding: '3px 2px' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                         <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, lineHeight: 1.4 }} title={item.test_name}>
                           {item.test_name}
@@ -583,33 +902,26 @@ export default function Dashboard() {
         {/* Module Health */}
         <div style={card}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Module Health · {periodLabel}</span>
-            {selectedModule && (
-              <button
-                onClick={() => setSelectedModule(null)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 20, padding: '0 7px', borderRadius: 4, border: '1px solid var(--border-default)', background: 'var(--bg-3)', fontSize: 10, color: 'var(--text-secondary)', cursor: 'pointer' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
-              >
-                ✕ Reset filter
-              </button>
-            )}
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Module Health</span>
+            <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>Click a card to see details</span>
           </div>
           <ModuleHealthGrid
             data={moduleStats}
             selectedModule={selectedModule}
-            onModuleClick={m => setSelectedModule(prev => prev === m ? null : m)}
+            onModuleClick={m => setModuleDetail(m)}
           />
         </div>
 
-        {/* Journey Health Matrix */}
+        {/* Journey Health */}
         <div style={card}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Journey Health Matrix · {periodLabel}</span>
-            {selectedModule && (
-              <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--bg-3)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 7px' }}>
-                {selectedModule}
-              </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Journey Health · {periodLabel}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>Click a row to see run history</span>
+            {(selectedModule || journeyFilter) && (
+              <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
+                {selectedModule && <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--bg-3)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 7px' }}>{selectedModule}</span>}
+                {journeyFilter && <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--bg-3)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '1px 7px' }}>{journeyFilter.split('/').pop()}</span>}
+              </div>
             )}
           </div>
           {(() => {
@@ -619,22 +931,14 @@ export default function Dashboard() {
             const hasJourneys = journeyRows.length > 0
             const hasApi = apiRows.length > 0
             if (!hasJourneys && !hasApi) {
-              return <JourneyMatrix title="All Tests" rows={filteredMatrix} onRowClick={setDetailFile} />
+              return <JourneyList title="All Tests" rows={filteredMatrix} onRowClick={setDetailFile} />
             }
             return (
-              <>
-                {hasJourneys && <JourneyMatrix title="UI Journeys" rows={journeyRows} onRowClick={setDetailFile} />}
-                {hasApi && (
-                  <div style={{ marginTop: 20 }}>
-                    <JourneyMatrix title="API Tests" rows={apiRows} onRowClick={setDetailFile} />
-                  </div>
-                )}
-                {otherRows.length > 0 && (
-                  <div style={{ marginTop: 20 }}>
-                    <JourneyMatrix title="Other" rows={otherRows} onRowClick={setDetailFile} />
-                  </div>
-                )}
-              </>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
+                {hasJourneys && <JourneyList title="UI Journeys" rows={journeyRows} onRowClick={setDetailFile} />}
+                {hasApi && <JourneyList title="API Tests" rows={apiRows} onRowClick={setDetailFile} />}
+                {otherRows.length > 0 && <JourneyList title="Other" rows={otherRows} onRowClick={setDetailFile} />}
+              </div>
             )
           })()}
         </div>
@@ -715,6 +1019,19 @@ export default function Dashboard() {
       </div>
 
       <JourneyDetail testFile={detailFile} onClose={() => setDetailFile(null)} />
+
+      <ModuleDetailPanel
+        module={moduleDetail}
+        stat={groupedModuleStats.find(s => s.module === moduleDetail)}
+        files={moduleFiles.get(moduleDetail ?? '') ?? new Set()}
+        onClose={() => setModuleDetail(null)}
+        onFileClick={f => { setModuleDetail(null); setDetailFile(f) }}
+      />
+
+      <TestFailurePanel
+        test={selectedFailedTest}
+        onClose={() => setSelectedFailedTest(null)}
+      />
     </div>
   )
 }

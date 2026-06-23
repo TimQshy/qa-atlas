@@ -137,15 +137,12 @@ function ModuleCard({ stat, active, onClick }: { stat: ModuleStat; active: boole
         )}
       </div>
 
-      {/* Sparkline */}
-      <div style={{ marginTop: 2 }}>
-        <Sparkline runs={stat.runs} />
-      </div>
-
-      {/* Runs count */}
-      <div style={{ fontSize: 9, color: 'var(--text-faint)' }}>
-        {stat.runs.length} run{stat.runs.length !== 1 ? 's' : ''}
-      </div>
+      {/* Last run date */}
+      {stat.runs.length > 0 && (
+        <div style={{ fontSize: 9, color: 'var(--text-faint)', marginTop: 2 }}>
+          {new Date(stat.runs[stat.runs.length - 1].started_at).toLocaleDateString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        </div>
+      )}
     </div>
   )
 }
