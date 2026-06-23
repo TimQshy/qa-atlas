@@ -263,9 +263,10 @@ function JourneyList({ title, rows, onRowClick }: { title: string; rows: MatrixR
       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: 0.2 }}>{title}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         {rows.map(row => {
-          const latest = row.runs.find(r => r.status !== 'not_run') ?? row.runs[0]
+          const latest = row.runs[0]
           const status = latest?.status ?? 'not_run'
-          const color = STATUS_COLOR_MAP[status] ?? 'var(--bg-3)'
+          const lastActive = status === 'not_run' ? row.runs.find(r => r.status !== 'not_run') : latest
+          const color = STATUS_COLOR_MAP[status] ?? 'var(--text-faint)'
           const d = latest ? new Date(latest.started_at) : null
           const dateLabel = d ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}h` : '—'
           const file = row.test_file.split('/').pop() ?? row.test_file
@@ -277,14 +278,20 @@ function JourneyList({ title, rows, onRowClick }: { title: string; rows: MatrixR
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: color, opacity: status === 'not_run' ? 0.35 : 0.88, flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.test_file}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: status === 'not_run' ? 'var(--text-faint)' : color, opacity: status === 'not_run' ? 0.25 : 0.88, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12, color: status === 'not_run' ? 'var(--text-faint)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.test_file}>
                 {file}
               </span>
-              <span style={{ fontSize: 10, color, fontWeight: 500, flexShrink: 0, opacity: status === 'not_run' ? 0.5 : 1 }}>
-                {status === 'not_run' ? '—' : status}
-              </span>
-              <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0, minWidth: 60, textAlign: 'right' }}>{dateLabel}</span>
+              {status !== 'not_run' && (
+                <span style={{ fontSize: 10, color, fontWeight: 500, flexShrink: 0 }}>{status}</span>
+              )}
+              {status === 'not_run' && lastActive && (
+                <span style={{ fontSize: 9, color: 'var(--text-faint)', flexShrink: 0 }}
+                  title={`Last ran: ${new Date(lastActive.started_at).toLocaleDateString()} — ${lastActive.status}`}>
+                  last: {lastActive.status}
+                </span>
+              )}
+              <span style={{ fontSize: 10, color: status === 'not_run' ? 'var(--text-faint)' : 'var(--text-faint)', flexShrink: 0, minWidth: 60, textAlign: 'right' }}>{dateLabel}</span>
             </div>
           )
         })}
